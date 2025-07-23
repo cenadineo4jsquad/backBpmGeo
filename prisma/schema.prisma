@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model audit_logs {
+  id             Int           @id @default(autoincrement())
+  utilisateur_id Int?
+  action         String        @db.VarChar(100)
+  projet_id      Int?
+  details        Json?
+  date_action    DateTime?     @default(now()) @db.Timestamp(6)
+  projets        projets?      @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  utilisateurs   utilisateurs? @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
+}
+
+model etapes_workflow {
+  id              Int      @id @default(autoincrement())
+  projet_id       Int?
+  nom             String   @db.VarChar(100)
+  ordre           Int
+  description     String?
+  type_validation String?  @db.VarChar(50)
+  projets         projets? @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model extractions {
+  id                 Int                  @id @default(autoincrement())
+  projet_id          Int?
+  utilisateur_id     Int?
+  fichier            String               @db.VarChar(255)
+  donnees_extraites  Json?
+  seuil_confiance    Decimal?             @db.Decimal(5, 2)
+  statut             String?              @db.VarChar(20)
+  date_extraction    DateTime?            @default(now()) @db.Timestamp(6)
+  workflow_initiated Boolean?             @default(false)
+  projets            projets?             @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  utilisateurs       utilisateurs?        @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
+  titres_extractions titres_extractions[]
+  validations        validations[]
+  workflows          workflows[]
+
+  @@index([date_extraction], map: "idx_extractions_date")
+  @@index([statut], map: "idx_extractions_statut")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model localites {
+  id     Int    @id @default(autoincrement())
+  type   String @db.VarChar(50)
+  valeur String @db.VarChar(255)
+
+  utilisateurs utilisateurs[]
+  @@unique([type, valeur])
+}
+
+model permissions {
+  id      Int    @id @default(autoincrement())
+  role_id Int?
+  action  String @db.VarChar(100)
+  roles   roles? @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([role_id, action])
+}
+
+model projets {
+  id              Int               @id @default(autoincrement())
+  nom             String            @db.VarChar(150)
+  description     String?
+  date_creation   DateTime?         @default(now()) @db.Timestamp(6)
+  audit_logs      audit_logs[]
+  etapes_workflow etapes_workflow[]
+  extractions     extractions[]
+  titres_fonciers titres_fonciers[]
+  workflows       workflows[]
+}
+
+model roles {
+  id                Int                 @id @default(autoincrement())
+  nom               String              @unique @db.VarChar(50)
+  description       String?
+  permissions       permissions[]
+  utilisateur_roles utilisateur_roles[]
+}
+
+model titres_extractions {
+  titre_id        Int
+  extraction_id   Int
+  extractions     extractions     @relation(fields: [extraction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titres_fonciers titres_fonciers @relation(fields: [titre_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([titre_id, extraction_id])
+}
+
+model titres_fonciers {
+  id                 Int                  @id @default(autoincrement())
+  projet_id          Int?
+  proprietaire       String?              @db.VarChar(150)
+  superficie         Decimal?             @db.Decimal(10, 2)
+  perimetre          Decimal?             @db.Decimal(10, 2)
+  coordonnees_gps    Json?
+  centroide          Json?
+  date_ajout         DateTime?            @default(now()) @db.Timestamp(6)
+  titres_extractions titres_extractions[]
+  projets            projets?             @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([projet_id], map: "idx_titres_projet")
+}
+
+model utilisateur_roles {
+  utilisateur_id Int
+  role_id        Int
+  roles          roles        @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  utilisateurs   utilisateurs @relation(fields: [utilisateur_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([utilisateur_id, role_id])
+}
+
+model utilisateurs {
+  id                  Int                 @id @default(autoincrement())
+  nom                 String              @db.VarChar(100)
+  prenom              String              @db.VarChar(100)
+  email               String              @unique @db.VarChar(150)
+  mot_de_passe        String              @db.VarChar(255)
+  niveau_hierarchique Int
+  localite_id         Int?
+  localites           localites? @relation(fields: [localite_id], references: [id])
+  date_creation       DateTime?           @default(now()) @db.Timestamp(6)
+  audit_logs          audit_logs[]
+  extractions         extractions[]
+  utilisateur_roles   utilisateur_roles[]
+  validations         validations[]
+  workflows           workflows[]
+
+  @@index([email], map: "idx_utilisateurs_email")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model validations {
+  id              Int           @id @default(autoincrement())
+  extraction_id   Int?
+  utilisateur_id  Int?
+  statut          String?       @db.VarChar(20)
+  commentaire     String?
+  date_validation DateTime?     @default(now()) @db.Timestamp(6)
+  extractions     extractions?  @relation(fields: [extraction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  utilisateurs    utilisateurs? @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
+}
+
+model workflows {
+  id               Int           @id @default(autoincrement())
+  titre_foncier_id Int?
+  projet_id        Int?
+  etape_nom        String?       @db.VarChar(100)
+  ordre            Int?
+  utilisateur_id   Int?
+  date_debut       DateTime?     @default(now()) @db.Timestamp(6)
+  date_fin         DateTime?     @db.Timestamp(6)
+  projets          projets?      @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  extractions      extractions?  @relation(fields: [titre_foncier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  utilisateurs     utilisateurs? @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
+}

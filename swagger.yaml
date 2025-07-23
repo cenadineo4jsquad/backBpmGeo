@@ -1,0 +1,277 @@
+openapi: 3.0.3
+info:
+  title: API GeoBpm
+  description: Documentation Swagger pour le backend GeoBpm
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api
+paths:
+  /login:
+    post:
+      summary: Authentification utilisateur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                mot_de_passe:
+                  type: string
+      responses:
+        '200':
+          description: Token et infos utilisateur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+  /me:
+    get:
+      summary: Infos utilisateur connecté
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Infos utilisateur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /utilisateurs:
+    get:
+      summary: Liste des utilisateurs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Liste des utilisateurs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      summary: Création utilisateur
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Utilisateur créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /utilisateurs/{id}:
+    get:
+      summary: Détail utilisateur
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Utilisateur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    put:
+      summary: Modification utilisateur
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Utilisateur modifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    delete:
+      summary: Suppression utilisateur
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Utilisateur supprimé
+  /projets:
+    get:
+      summary: Liste des projets
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Liste des projets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Projet'
+    post:
+      summary: Création projet
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjetCreate'
+      responses:
+        '201':
+          description: Projet créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projet'
+  /projets/{id}:
+    get:
+      summary: Détail projet
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Projet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projet'
+    put:
+      summary: Modification projet
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjetUpdate'
+      responses:
+        '200':
+          description: Projet modifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projet'
+    delete:
+      summary: Suppression projet
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Projet supprimé
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+        email:
+          type: string
+        niveau_hierarchique:
+          type: integer
+    UserCreate:
+      type: object
+      properties:
+        nom:
+          type: string
+        email:
+          type: string
+        mot_de_passe:
+          type: string
+        niveau_hierarchique:
+          type: integer
+    UserUpdate:
+      type: object
+      properties:
+        nom:
+          type: string
+        email:
+          type: string
+        niveau_hierarchique:
+          type: integer
+    Projet:
+      type: object
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+        description:
+          type: string
+    ProjetCreate:
+      type: object
+      properties:
+        nom:
+          type: string
+        description:
+          type: string
+    ProjetUpdate:
+      type: object
+      properties:
+        nom:
+          type: string
+        description:
+          type: string
