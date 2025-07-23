@@ -21,16 +21,26 @@ export const loginHandler = async (
         .send({ error: "Email ou mot de passe incorrect" });
     }
     // Générer le token JWT
+    const role =
+      utilisateur.utilisateur_roles && utilisateur.utilisateur_roles.length > 0
+        ? utilisateur.utilisateur_roles[0].roles.nom
+        : undefined;
     const token = await reply.jwtSign({
       id: utilisateur.id,
       email: utilisateur.email,
-      role:
-        utilisateur.utilisateur_roles &&
-        utilisateur.utilisateur_roles.length > 0
-          ? utilisateur.utilisateur_roles[0].roles.nom
-          : undefined,
+      role,
     });
-    reply.send({ token });
+    reply.send({
+      token,
+      user: {
+        id: utilisateur.id,
+        email: utilisateur.email,
+        role,
+        nom: utilisateur.nom,
+        prenom: utilisateur.prenom,
+        niveau_hierarchique: utilisateur.niveau_hierarchique,
+      },
+    });
   } catch (error) {
     reply.status(500).send({ error: "Erreur serveur" });
   }

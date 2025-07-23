@@ -1,11 +1,24 @@
 import fastify from "fastify";
+import cors from "@fastify/cors";
 import { Pool } from "pg";
 import fastifyJwt from "@fastify/jwt";
 import fastifyMultipart from "@fastify/multipart"; // Assure-toi que le package est bien installé
 import routes from "./routes";
 import config from "./config";
 
-const server = fastify({ logger: true });
+const server = fastify({
+  logger: {
+    transport: {
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
+        singleLine: false,
+      },
+    },
+  },
+});
 
 const pool = new Pool({
   user: config.db.user,
@@ -13,6 +26,16 @@ const pool = new Pool({
   database: config.db.database,
   password: config.db.password,
   port: config.db.port,
+});
+
+// Ajout du support CORS
+server.register(cors, {
+  origin: true, // Autorise toutes les origines pendant le développement
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  exposedHeaders: ["Content-Range", "X-Content-Range"],
+  credentials: true,
+  maxAge: 86400,
 });
 
 server.register(fastifyJwt, { secret: config.jwt.secret });
@@ -24,37 +47,40 @@ routes.forEach((route: any) => {
 });
 
 // Route de santé
-server.get('/health', async (request, reply) => {
+server.get("/health", async (request, reply) => {
   // Vérification de la base de données
-  let dbStatus = 'unknown';
+  let dbStatus = "unknown";
   try {
-    await pool.query('SELECT 1');
-    dbStatus = 'connected';
+    await pool.query("SELECT 1");
+    dbStatus = "connected";
   } catch {
-    dbStatus = 'error';
+    dbStatus = "error";
   }
   reply.send({
-    status: 'ok',
+    status: "ok",
     timestamp: new Date().toISOString(),
     node: process.version,
     uptime: process.uptime(),
     db: dbStatus,
-    env: process.env.NODE_ENV || 'unknown',
+    env: process.env.NODE_ENV || "unknown",
     port: config.port,
   });
 });
 
 // Error handling
 server.setErrorHandler((error, request, reply) => {
-  request.log.error({
-    message: error.message,
-    stack: error.stack,
-    url: request.url,
-    method: request.method,
-    body: request.body,
-    params: request.params,
-    query: request.query,
-  }, "[SERVER ERROR]");
+  const log = [
+    "\n========== [SERVER ERROR] ==========",
+    `  Message : ${error.message}`,
+    `  Stack   : ${error.stack}`,
+    `  URL     : ${request.url}`,
+    `  Method  : ${request.method}`,
+    `  Body    : ${JSON.stringify(request.body, null, 2)}`,
+    `  Params  : ${JSON.stringify(request.params, null, 2)}`,
+    `  Query   : ${JSON.stringify(request.query, null, 2)}`,
+    "====================================\n",
+  ].join("\n");
+  request.log.error(log);
   reply.status(500).send({
     error: "Internal Server Error",
     details: error.message,
@@ -78,17 +104,23 @@ const start = async () => {
         }
       }
     }
-    server.log.info("==================== SERVEUR DÉMARRÉ ====================");
-    ipList.forEach(ip => {
-      server.log.info(`➡️  API disponible sur http://${ip}:${config.port}`);
+    server.log.info(
+      "\n==================== SERVEUR DEMARRE ===================="
+    );
+    ipList.forEach((ip) => {
+      server.log.info(
+        `-> API disponible sur http://${ip}:${config.port}\n=========================================================`
+      );
     });
-    server.log.info("=========================================================");
   } catch (err) {
     const error = err as Error;
-    server.log.error({
-      message: error.message,
-      stack: error.stack
-    }, "[SERVER START ERROR]");
+    server.log.error(
+      {
+        message: error.message,
+        stack: error.stack,
+      },
+      "[SERVER START ERROR]"
+    );
     process.exit(1);
   }
 };
