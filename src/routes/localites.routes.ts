@@ -2,6 +2,8 @@
 // Endpoints Fastify.js pour localités (départements et arrondissements)
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { authenticate } from "../middlewares/authenticate";
+import { restrictToAdmin } from "../middlewares/restrictToAdmin";
 
 export default async function (fastify: any) {
   // Liste des départements
@@ -29,6 +31,7 @@ export default async function (fastify: any) {
   // Autocomplétion
   fastify.get(
     "/api/localites/autocomplete",
+    { preHandler: [authenticate, restrictToAdmin] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { type, terme } = request.query as any;
       if (!["departement", "arrondissement"].includes(type)) {

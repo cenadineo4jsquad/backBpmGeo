@@ -1,14 +1,17 @@
-import { Pool } from 'pg';
+import { Pool } from "pg";
 
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'geospatial_db',
-  password: 'password',
+  user: process.env.DB_USER || "postgres",
+  host: "localhost",
+  database: process.env.DB_NAME || "geobpm",
+  password: "password",
   port: 5432,
 });
 
-export const isPointInCameroon = async (longitude: number, latitude: number): Promise<boolean> => {
+export const isPointInCameroon = async (
+  longitude: number,
+  latitude: number
+): Promise<boolean> => {
   const query = `
     SELECT ST_Contains(
       (SELECT geom FROM cameroon_boundary LIMIT 1),
@@ -19,6 +22,9 @@ export const isPointInCameroon = async (longitude: number, latitude: number): Pr
   return result.rows[0].is_within;
 };
 
-export const validateCoordinates = async (coordinates: { longitude: number; latitude: number }): Promise<boolean> => {
+export const validateCoordinates = async (coordinates: {
+  longitude: number;
+  latitude: number;
+}): Promise<boolean> => {
   return await isPointInCameroon(coordinates.longitude, coordinates.latitude);
 };

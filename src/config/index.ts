@@ -7,9 +7,9 @@ const config = {
   db: {
     host: process.env.DB_HOST || "localhost",
     port: parseInt(process.env.DB_PORT ?? "5432", 10),
-    user: process.env.DB_USER || "postgres",
-    password: process.env.DB_PASSWORD || "password",
-    database: process.env.DB_NAME || "geospatial_db",
+    user: process.env.DB_USER || "Cenadi-Squad",
+    password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_NAME || "geobpm",
   },
   jwt: {
     secret: process.env.JWT_SECRET || "secret_key",
@@ -23,5 +23,7 @@ const config = {
     coordFormat: process.env.COORD_FORMAT || "decimal",
   },
 };
+
+console.log("[DEBUG][config] Connexion DB utilisée:", config.db);
 
 export default config;

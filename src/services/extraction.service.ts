@@ -1,41 +1,91 @@
+import axios from "axios";
+import * as dotenv from "dotenv";
 import { Pool } from "pg";
 import { Extraction } from "../models/extraction.model";
-import { TitresFoncier } from "../models/titresFoncier.model";
-import { Workflow } from "../models/workflows.model";
-import { Task } from "../models/taches.model";
+dotenv.config();
 
 const pool = new Pool({
-  user: "postgres",
+  user: process.env.DB_USER || "postgres",
   host: "localhost",
-  database: "geospatial_db",
-  password: "password",
+  database: "geobpm",
+  password: "",
   port: 5432,
 });
 
 export class ExtractionService {
-  async uploadExtraction(
-    data: any,
-    userId: number,
-    projetId: number
-  ): Promise<Extraction> {
-    const { fichier, donnees_extraites, seuil_confiance, titre_foncier_id } =
-      data;
+  async getExtractions(filters: {
+    projet_id?: number;
+    statut?: string;
+    utilisateur_id?: number;
+  }): Promise<any[]> {
+    let query = "SELECT * FROM extractions WHERE 1=1";
+    const params: any[] = [];
+    if (filters.projet_id) {
+      params.push(filters.projet_id);
+      query += ` AND projet_id = $${params.length}`;
+    }
+    if (filters.statut) {
+      params.push(filters.statut);
+      query += ` AND statut = $${params.length}`;
+    }
+    if (filters.utilisateur_id) {
+      params.push(filters.utilisateur_id);
+      query += ` AND utilisateur_id = $${params.length}`;
+    }
+    query += " ORDER BY date_extraction DESC";
+    const { rows } = await pool.query(query, params);
+    return rows;
+  }
 
-    const extractionQuery = `
-      INSERT INTO extractions (projet_id, utilisateur_id, fichier, donnees_extraites, seuil_confiance, titre_foncier_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *;
-    `;
-    const result = await pool.query(extractionQuery, [
-      projetId,
-      userId,
-      fichier,
-      donnees_extraites,
-      seuil_confiance,
-      titre_foncier_id,
+  async getExtractionById(id: number): Promise<any | null> {
+    const { rows } = await pool.query(
+      "SELECT * FROM extractions WHERE id = $1",
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  async deleteExtraction(id: number): Promise<void> {
+    await pool.query("DELETE FROM extractions WHERE id = $1", [id]);
+  }
+
+  async validerExtraction(id: number): Promise<void> {
+    await pool.query("UPDATE extractions SET statut = $1 WHERE id = $2", [
+      "valide",
+      id,
     ]);
+  }
 
-    return result.rows[0];
+  async rejeterExtraction(id: number): Promise<void> {
+    await pool.query("UPDATE extractions SET statut = $1 WHERE id = $2", [
+      "rejete",
+      id,
+    ]);
+  }
+  async uploadExtractionToFlask(file: any, projet_id: any): Promise<any> {
+    // Préparation du form-data pour Flask
+    const FormData = require("form-data");
+    const form = new FormData();
+    form.append("file", file.file, {
+      filename: file.filename,
+      contentType: file.mimetype,
+    });
+    // L'API Flask attend uniquement le champ 'file' (comme dans le curl fourni)
+
+    // Envoi à Flask
+    const flaskUrl =
+      process.env.FLASK_API_URL || "http://10.100.213.195:5000/api/process";
+    try {
+      const response = await axios.post(flaskUrl, form, {
+        headers: {
+          ...form.getHeaders(),
+        },
+        maxBodyLength: Infinity,
+      });
+      return response.data;
+    } catch (err: any) {
+      return { error: "Erreur lors de l'appel à Flask", details: err.message };
+    }
   }
 
   async correctExtraction(id: number, updatedData: any): Promise<Extraction> {

@@ -43,10 +43,33 @@ export async function getUserById(id: string) {
   });
 }
 
+export async function getUserByIdWithLocalite(id: string) {
+  return prisma.utilisateurs.findUnique({
+    where: { id: parseInt(id) },
+    include: {
+      localites: true,
+    },
+  });
+}
+
 export async function updateUser(id: string, data: any) {
   return prisma.utilisateurs.update({
     where: { id: parseInt(id) },
     data,
+  });
+}
+
+export async function updateUserWithLocalite(id: string, data: any) {
+  // Si localite présent, on met à jour localite_id
+  const updateData = { ...data };
+  if (data.localite && data.localite.id) {
+    updateData.localite_id = parseInt(data.localite.id);
+    delete updateData.localite;
+  }
+  return prisma.utilisateurs.update({
+    where: { id: parseInt(id) },
+    data: updateData,
+    include: { localites: true },
   });
 }
 

@@ -9,6 +9,11 @@ import { restrictToAdmin } from "../middlewares/restrictToAdmin";
 import { restrictToFirstUser } from "../middlewares/restrictToFirstUser";
 
 export default async function workflowsRoutes(fastify: FastifyInstance) {
+  fastify.get(
+    "/api/workflows",
+    { preHandler: [authenticate] },
+    getWorkflowsHandler
+  );
   fastify.post(
     "/api/workflows",
     { preHandler: [authenticate, restrictToAdmin] },

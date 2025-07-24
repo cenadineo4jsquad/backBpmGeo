@@ -28,4 +28,9 @@ export default async function projetsRoutes(fastify: FastifyInstance) {
     preHandler: [authenticate],
     handler: getAllProjects,
   });
+
+  fastify.get("/api/projets/:id", {
+    preHandler: [authenticate],
+    handler: require("../controllers/projets.controller").getProjectById,
+  });
 }

@@ -2,6 +2,9 @@ import {
   getTitresFoncier,
   getTitreFoncierById,
   updateTitreFoncier,
+  createTitreFoncier,
+  deleteTitreFoncier,
+  getTitresGeojson,
 } from "../controllers/titresFoncier.controller";
 import { FastifyInstance } from "fastify";
 import { authenticate } from "../middlewares/authenticate";
@@ -9,20 +12,40 @@ import { restrictToAdmin } from "../middlewares/restrictToAdmin";
 import { restrictToFirstUser } from "../middlewares/restrictToFirstUser";
 
 export default async function titresFoncierRoutes(fastify: FastifyInstance) {
+  // Liste tous les titres fonciers (conforme doc: /api/titres_fonciers)
   fastify.get(
-    "/titres-foncier",
+    "/api/titres_fonciers",
     { preHandler: [authenticate] },
     getTitresFoncier
   );
+  // Détail d'un titre foncier (conforme doc: /api/titres_fonciers/:id)
   fastify.get(
-    "/titres-foncier/:id",
+    "/api/titres_fonciers/:id",
     { preHandler: [authenticate] },
     getTitreFoncierById
   );
+  // Ajout d'un titre foncier (conforme doc: /api/titres_fonciers)
+  fastify.post(
+    "/api/titres_fonciers",
+    { preHandler: [authenticate] },
+    createTitreFoncier
+  );
+  // Modification d'un titre foncier (conforme doc: /api/titres_fonciers/:id)
   fastify.put(
-    "/titres-foncier/:id",
-    { preHandler: [authenticate, restrictToAdmin] },
+    "/api/titres_fonciers/:id",
+    { preHandler: [authenticate] },
     updateTitreFoncier
   );
-  // Si vous souhaitez ajouter la création, il faudra d'abord implémenter createTitreFoncier dans le contrôleur
+  // Suppression d'un titre foncier
+  fastify.delete(
+    "/api/titres_fonciers/:id",
+    { preHandler: [authenticate, restrictToAdmin] },
+    deleteTitreFoncier
+  );
+  // Route GeoJSON
+  fastify.get(
+    "/api/titres/geojson",
+    { preHandler: [authenticate] },
+    getTitresGeojson
+  );
 }

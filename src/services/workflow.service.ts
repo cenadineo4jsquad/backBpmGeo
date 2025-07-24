@@ -1,3 +1,52 @@
+import { Pool } from "pg";
+const pool = new Pool({
+  user: process.env.DB_USER || "postgres",
+  host: process.env.DB_HOST || "localhost",
+  database: process.env.DB_NAME || "geobpm",
+  password: process.env.DB_PASSWORD || "password",
+  port: parseInt(process.env.DB_PORT ?? "5432", 10),
+});
+/**
+ * Récupère la liste des workflows avec filtrage projet_id, titre_foncier_id, statut, localite (pour niveaux 1-2)
+ */
+export async function getWorkflows({
+  projet_id,
+  titre_foncier_id,
+  statut,
+  localite,
+  niveau_hierarchique,
+}: any) {
+  let query = `SELECT * FROM workflows`;
+  const where: string[] = [];
+  const params: any[] = [];
+  if (projet_id) {
+    where.push(`projet_id = $${params.length + 1}`);
+    params.push(projet_id);
+  }
+  if (titre_foncier_id) {
+    where.push(`titre_foncier_id = $${params.length + 1}`);
+    params.push(titre_foncier_id);
+  }
+  if (statut) {
+    where.push(`statut = $${params.length + 1}`);
+    params.push(statut);
+  }
+  if ((niveau_hierarchique === 1 || niveau_hierarchique === 2) && localite) {
+    where.push(`localite->>'valeur' = $${params.length + 1}`);
+    params.push(localite);
+  }
+  if (where.length) query += ` WHERE ` + where.join(" AND ");
+  const { rows } = await pool.query(query, params);
+  // Pour chaque workflow, charger les taches associées
+  for (const wf of rows) {
+    const tachesRes = await pool.query(
+      "SELECT * FROM taches WHERE workflow_id = $1 ORDER BY etape_ordre ASC",
+      [wf.id]
+    );
+    wf.taches = tachesRes.rows;
+  }
+  return rows;
+}
 // src/services/workflow.service.ts
 // Squelette du service workflows pour Fastify
 

@@ -1,16 +1,89 @@
+// ...imports et pool...
 import { Pool } from "pg";
 import { TitresFoncier } from "../models/titresFoncier.model";
 import { AuditLog } from "../models/auditLogs.model";
 
 const pool = new Pool({
-  user: "postgres",
+  user: process.env.DB_USER || "postgres",
   host: "localhost",
-  database: "geospatial_db",
+  database: process.env.DB_NAME || "geobpm",
   password: "password",
   port: 5432,
 });
 
 export class TitreFoncierService {
+  async findAllTitresFoncier() {
+    const result = await pool.query("SELECT * FROM titres_fonciers");
+    return result.rows;
+  }
+  async createTitreFoncier(data: any, utilisateurId: number) {
+    const query = `
+      INSERT INTO titres_fonciers (projet_id, proprietaire, coordonnees_gps, superficie, perimetre, localite)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *;
+    `;
+    console.log("[DEBUG][createTitreFoncier] Données reçues:", data);
+    try {
+      const result = await pool.query(query, [
+        data.projet_id ?? null,
+        data.proprietaire,
+        JSON.stringify(data.coordonnees_gps),
+        data.superficie,
+        data.perimetre,
+        data.localite ?? null,
+      ]);
+      console.log("[DEBUG][createTitreFoncier] Résultat SQL:", result.rows[0]);
+      await this.logAudit(
+        utilisateurId,
+        "create_titre_foncier",
+        result.rows[0]?.projet_id,
+        result.rows[0]
+      );
+      const row = result.rows[0];
+      // Conversion explicite pour éviter les strings SQL sur les champs numériques
+      if (row) {
+        if (row.superficie !== undefined)
+          row.superficie = Number(row.superficie);
+        if (row.perimetre !== undefined) row.perimetre = Number(row.perimetre);
+      }
+      return row;
+    } catch (error) {
+      console.error("[ERREUR][createTitreFoncier]", error);
+      throw error;
+    }
+  }
+
+  async findTitreFoncierById(id: number) {
+    const result = await pool.query(
+      "SELECT * FROM titres_fonciers WHERE id = $1",
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async deleteTitreFoncier(id: number) {
+    await pool.query("DELETE FROM titres_fonciers WHERE id = $1", [id]);
+  }
+
+  async getTitresGeojson() {
+    const { rows } = await pool.query("SELECT * FROM titres_fonciers");
+    const features = rows.map((row: any) => ({
+      type: "Feature",
+      geometry: {
+        type: "Polygon",
+        coordinates: row.coordonnees_gps,
+      },
+      properties: {
+        id: row.id,
+        nom: row.nom || row.projet_id || "",
+        proprietaire: row.proprietaire,
+      },
+    }));
+    return {
+      type: "FeatureCollection",
+      features,
+    };
+  }
   async getTitresFoncier(localite: string, niveau_hierarchique: number) {
     const query = `
       SELECT * FROM titres_fonciers
@@ -26,7 +99,12 @@ export class TitreFoncierService {
   async getTitreFoncierById(id: number) {
     const query = "SELECT * FROM titres_fonciers WHERE id = $1";
     const result = await pool.query(query, [id]);
-    return result.rows[0];
+    const row = result.rows[0];
+    if (row) {
+      if (row.superficie !== undefined) row.superficie = Number(row.superficie);
+      if (row.perimetre !== undefined) row.perimetre = Number(row.perimetre);
+    }
+    return row;
   }
 
   async updateTitreFoncier(
@@ -36,14 +114,14 @@ export class TitreFoncierService {
   ) {
     const query = `
       UPDATE titres_fonciers
-      SET proprietaire = $1, coordonnees_gps = $2, surface_m2 = $3, perimetre_m = $4
+      SET proprietaire = $1, coordonnees_gps = $2, superficie = $3, perimetre = $4
       WHERE id = $5 RETURNING *;
     `;
     const result = await pool.query(query, [
       data.proprietaire,
-      data.coordonnees_gps,
-      data.surface_m2,
-      data.perimetre_m,
+      JSON.stringify(data.coordonnees_gps),
+      data.superficie,
+      data.perimetre,
       id,
     ]);
 
@@ -54,7 +132,12 @@ export class TitreFoncierService {
       result.rows[0].projet_id,
       { id, ...auditDetails }
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    if (row) {
+      if (row.superficie !== undefined) row.superficie = Number(row.superficie);
+      if (row.perimetre !== undefined) row.perimetre = Number(row.perimetre);
+    }
+    return row;
   }
 
   private async logAudit(

@@ -1,10 +1,10 @@
-import { Pool } from 'pg';
+import { Pool } from "pg";
 
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'geospatial_db',
-  password: 'password',
+  user: process.env.DB_USER || "postgres",
+  host: "localhost",
+  database: process.env.DB_NAME || "geobpm",
+  password: "password",
   port: 5432,
 });
 
@@ -17,7 +17,10 @@ export interface Workflow {
   date_creation: Date;
 }
 
-export const createWorkflow = async (projet_id: number, titre_foncier_id: number): Promise<Workflow> => {
+export const createWorkflow = async (
+  projet_id: number,
+  titre_foncier_id: number
+): Promise<Workflow> => {
   const query = `
     INSERT INTO workflows (projet_id, titre_foncier_id)
     VALUES ($1, $2)
@@ -36,7 +39,10 @@ export const getWorkflowById = async (id: number): Promise<Workflow | null> => {
   return result.rows.length ? result.rows[0] : null;
 };
 
-export const updateWorkflowStatus = async (id: number, statut: string): Promise<Workflow | null> => {
+export const updateWorkflowStatus = async (
+  id: number,
+  statut: string
+): Promise<Workflow | null> => {
   const query = `
     UPDATE workflows
     SET statut = $1

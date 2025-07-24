@@ -1,5 +1,31 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import * as workflowService from "../services/workflow.service";
+import { getWorkflows } from "../services/workflow.service";
+export const getWorkflowsHandler = async (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
+  try {
+    const user = request.user as any;
+    const { projet_id, titre_foncier_id, statut } = request.query as any;
+    // Pour niveaux 1-2, filtrer par localite
+    let localite = undefined;
+    if (user.niveau_hierarchique === 1 || user.niveau_hierarchique === 2) {
+      localite = user.localite?.valeur;
+    }
+    const workflows = await getWorkflows({
+      projet_id,
+      titre_foncier_id,
+      statut,
+      localite,
+      niveau_hierarchique: user.niveau_hierarchique,
+    });
+    reply.status(200).send(workflows);
+  } catch (error) {
+    reply
+      .status(500)
+      .send({ error: "Erreur lors de la récupération des workflows" });
+  }
+};
 
 export const createWorkflowHandler = async (
   request: FastifyRequest,

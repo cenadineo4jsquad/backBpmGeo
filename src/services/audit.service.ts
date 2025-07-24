@@ -2,9 +2,9 @@ import { Pool } from "pg";
 import { AuditLog } from "../models/auditLogs.model";
 
 const pool = new Pool({
-  user: "postgres",
+  user: process.env.DB_USER || "postgres",
   host: "localhost",
-  database: "geospatial_db",
+  database: process.env.DB_NAME || "geobpm",
   password: "password",
   port: 5432,
 });
