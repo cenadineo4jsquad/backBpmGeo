@@ -65,8 +65,17 @@ export class TitreFoncierService {
     await pool.query("DELETE FROM titres_fonciers WHERE id = $1", [id]);
   }
 
-  async getTitresGeojson() {
-    const { rows } = await pool.query("SELECT * FROM titres_fonciers");
+  async getTitresGeojson(localite?: string) {
+    let query = "SELECT * FROM titres_fonciers";
+    const params: any[] = [];
+
+    if (localite) {
+      query += " WHERE localite = $1";
+      params.push(localite);
+    }
+
+    const { rows } = await pool.query(query, params);
+
     const features = rows.map((row: any) => ({
       type: "Feature",
       geometry: {
@@ -79,6 +88,7 @@ export class TitreFoncierService {
         proprietaire: row.proprietaire,
       },
     }));
+
     return {
       type: "FeatureCollection",
       features,

@@ -84,14 +84,23 @@ export const getTitresGeojson = async (
   reply: FastifyReply
 ) => {
   try {
-    const features = await titreFoncierService.getTitresGeojson();
-    reply.status(200).send(features);
+    const user = request.user as any;
+    let geojson;
+    if (user.niveau_hierarchique === 1 || user.niveau_hierarchique === 2) {
+      geojson = await titreFoncierService.getTitresGeojson(
+        user.localite?.valeur
+      );
+    } else {
+      geojson = await titreFoncierService.getTitresGeojson();
+    }
+    reply.status(200).send(geojson);
   } catch (error) {
     reply
       .status(500)
       .send({ error: "Erreur lors de la récupération des titres GeoJSON" });
   }
 };
+
 import { FastifyRequest, FastifyReply } from "fastify";
 import { TitreFoncierService } from "../services/titreFoncier.service";
 

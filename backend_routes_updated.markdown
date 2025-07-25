@@ -1207,14 +1207,32 @@ This document describes the REST API routes for the GeoBPM backend, developed wi
 
 ---
 
-## Notes
+## Notes – Version Prisma / 2025
 
-- **Framework**: Routes are designed for Fastify.js, leveraging its performance and plugin system.
-- **Database**: Aligns with the PostgreSQL schema (tables: `utilisateurs`, `projets`, `roles`, `permissions`, `localites`, `titres_fonciers`, `extractions`, `extraction_configs`, `workflows`, `taches`, `audit_logs`).
-- **Flask Integration**: Modifications to `titres_fonciers` or `extractions` send JSON payloads to `http://flask-api/extraction/update`.
-- **Geospatial**: Uses PostGIS for validating `coordonnees_gps` within Cameroon’s boundaries.
-- **Audit Logging**: All actions (create, update, delete, extract, validate, reject, submit) are logged in `audit_logs`.
-- **Scalability**: Use clustering and BullMQ for asynchronous extraction tasks.
-- **Security**: HTTPS for all API calls, AES encryption for sensitive data.
+- **Framework**  
+  Fastify.js est conservé pour sa rapidité et son écosystème de plugins ; toutes les routes sont typées en TypeScript et déclarées via des plugins Fastify autogénérés à partir des modèles Prisma.
 
-For specific implementation details or additional routes, please provide further requirements.
+- **Base de données & ORM**  
+  PostgreSQL 15+ avec **Prisma ORM** (v5).  
+  Schéma Prisma reflète les tables : `utilisateurs`, `projets`, `roles`, `permissions`, `localites`, `titres_fonciers`, `extractions`, `extraction_configs`, `workflows`, `taches`, `audit_logs`.  
+  – PostGIS activé (`extensions = [postgis]` dans `schema.prisma`).  
+  – Migrations gérées via `npx prisma migrate dev`.
+
+- **Flask Integration**  
+  Toujours via `http://flask-api/extraction/update`, mais le payload est maintenant **validé par un schéma Prisma généré** avant envoi ; réponse asynchrone via webhook stockée dans `extractions.resultat_flask`.
+
+- **Géospatial**  
+  Champs `coordonnees_gps` déclarés `Unsupported("geometry")` dans Prisma ; validation PostGIS (ST_Within + enveloppe Cameroun) encapsulée dans un middleware Prisma `$extends`.
+
+- **Audit Logging**  
+  Utilisation du **Prisma Client Extension** `@prisma-extension/audit` : chaque `create`, `update`, `delete` sur les entités principales alimente automatiquement `audit_logs` (timestamp, userId, diff JSON).
+
+- **Scalability**  
+  – Clustering Fastify via `fastify-cluster`.  
+  – File d’attente **BullMQ** pilotée par `extractions.queue` et `workers/extraction.worker.ts` ; jobs persistés dans Redis, résultats écrits via Prisma.
+
+- **Security**  
+  HTTPS partout, certificats Let’s Encrypt.  
+  Données sensibles (mot de passe, coord. GPS précises) chiffrées côté serveur via AES-256-GCM avec clé stockée dans **AWS Secrets Manager** et référencée via `env("AES_KEY")`.
+
+Pour des routes ou règles métier spécifiques, fournissez les détails requis.

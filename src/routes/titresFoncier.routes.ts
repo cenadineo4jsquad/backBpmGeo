@@ -44,8 +44,8 @@ export default async function titresFoncierRoutes(fastify: FastifyInstance) {
   );
   // Route GeoJSON
   fastify.get(
-    "/api/titres/geojson",
-    { preHandler: [authenticate] },
-    getTitresGeojson
-  );
+  "/api/titres_fonciers/geojson",
+  { preHandler: [authenticate] },
+  getTitresGeojson
+);
 }

@@ -1,19 +1,17 @@
 import { FastifyInstance } from "fastify";
-import { AuditController } from "../controllers/audit.controller";
+import { getAuditLogsHandler } from "../controllers/audit.controller";
 import { authenticate } from "../middlewares/authenticate";
-import { restrictToAdmin } from "../middlewares/restrictToAdmin";
+import { exportAuditLogsHandler } from "../controllers/audit.controller";
 
-const auditController = new AuditController();
-const auditRoutes = async (fastify: FastifyInstance) => {
-  fastify.get("/api/audit", {
-    preHandler: [authenticate],
-    handler: auditController.getAuditLogs,
-  });
-
-  fastify.post("/api/audit/export", {
-    preHandler: [authenticate, restrictToAdmin],
-    handler: auditController.exportAuditLogs,
-  });
-};
-
-export default auditRoutes;
+export default async function auditRoutes(fastify: FastifyInstance) {
+  fastify.get(
+    "/api/audit",
+    { preHandler: [authenticate] },
+    getAuditLogsHandler
+  );
+  fastify.post(
+    "/api/audit/export",
+    { preHandler: [authenticate] },
+    exportAuditLogsHandler
+  );
+}

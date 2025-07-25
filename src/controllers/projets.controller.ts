@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { Projet } from "../models/projets.model";
-import { AuditService } from "../services/audit.service";
+import { logAuditAction } from "../services/audit.service";
 
 export const createProject = async (
   request: FastifyRequest,
@@ -20,8 +20,7 @@ export const createProject = async (
   }
   try {
     const newProject = await Projet.create(nom, description);
-    const auditService = new AuditService();
-    await auditService.logAction(user.id, "create_project", newProject.id, {
+    await logAuditAction(user.id, "create_project", newProject.id, {
       nom,
       description,
     });
@@ -61,8 +60,7 @@ export const updateProject = async (
       return reply.status(404).send({ error: "Projet non trouvé" });
     }
     const updatedProject = await Projet.update(Number(id), nom, description);
-    const auditService = new AuditService();
-    await auditService.logAction(user.id, "update_project", Number(id), {
+    await logAuditAction(user.id, "update_project", Number(id), {
       nom,
       description,
     });
@@ -100,8 +98,7 @@ export const deleteProject = async (
       return reply.status(404).send({ error: "Projet non trouvé" });
     }
     await Projet.delete(Number(id));
-    const auditService = new AuditService();
-    await auditService.logAction(user.id, "delete_project", Number(id), {});
+    await logAuditAction(user.id, "delete_project", Number(id), {});
     reply.status(200).send({ success: true });
   } catch (error) {
     reply

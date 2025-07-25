@@ -1,58 +1,55 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { AuditLog } from "../models/auditLogs.model";
-import { AuditService } from "../services/audit.service";
+import { getAuditLogs } from "../services/audit.service";
+import { exportAuditLogsPDF } from "../services/audit.service";
 
-export class AuditController {
-  private auditService: AuditService;
-
-  constructor() {
-    this.auditService = new AuditService();
-  }
-
-  public async getAuditLogs(
-    request: FastifyRequest,
-    reply: FastifyReply
-  ): Promise<void> {
-    try {
-      const { projetId, utilisateurId, dateDebut, dateFin } =
-        request.query as any;
-      const logs = await this.auditService.getAuditLogs(
-        projetId,
-        utilisateurId,
-        dateDebut,
-        dateFin
-      );
-      reply.status(200).send(logs);
-    } catch (error) {
-      reply
-        .status(500)
-        .send({ error: "Erreur lors de la récupération des logs d’audit" });
+export const getAuditLogsHandler = async (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
+  try {
+    const user = request.user as any;
+    if (!user || user.niveau_hierarchique < 3) {
+      return reply.status(403).send({ error: "Accès interdit" });
     }
+    const { projet_id, utilisateur_id, date_debut, date_fin } =
+      request.query as any;
+    const localite =
+      user.niveau_hierarchique === 3 ? user.localite?.valeur : undefined;
+    const logs = await getAuditLogs({
+      projet_id,
+      utilisateur_id,
+      date_debut,
+      date_fin,
+      niveau_hierarchique: user.niveau_hierarchique,
+      localite,
+    });
+    reply.send(logs);
+  } catch (error) {
+    reply.status(401).send({ error: "Non autorisé" });
   }
+};
 
-  public async exportAuditLogs(
-    request: FastifyRequest,
-    reply: FastifyReply
-  ): Promise<void> {
-    try {
-      const { projetId, utilisateurId, dateDebut, dateFin } =
-        request.body as any;
-      const pdfBuffer = await this.auditService.exportAuditLogs(
-        projetId,
-        utilisateurId,
-        dateDebut,
-        dateFin
-      );
-      reply.header("Content-Type", "application/pdf");
-      reply.header(
-        "Content-Disposition",
-        "attachment; filename=audit_logs.pdf"
-      );
-      reply.send(pdfBuffer);
-    } catch (error) {
-      reply
-        .status(500)
-        .send({ error: "Erreur lors de l’exportation des logs d’audit" });
+export const exportAuditLogsHandler = async (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
+  try {
+    const user = request.user as any;
+    if (!user || user.niveau_hierarchique < 3) {
+      return reply.status(403).send({ error: "Accès interdit" });
     }
+    const { projet_id, utilisateur_id, date_debut, date_fin } = request.body as any;
+    const localite = user.niveau_hierarchique === 3 ? user.localite?.valeur : undefined;
+    const filePath = await exportAuditLogsPDF({
+      projet_id,
+      utilisateur_id,
+      date_debut,
+      date_fin,
+      niveau_hierarchique: user.niveau_hierarchique,
+      localite,
+    });
+    reply.send({ success: true, file_path: filePath });
+  } catch (error) {
+    reply.status(401).send({ error: "Non autorisé" });
   }
-}
+};
