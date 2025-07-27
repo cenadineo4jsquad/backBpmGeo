@@ -131,6 +131,7 @@ model utilisateurs {
   localite_id         Int?
   localites           localites? @relation(fields: [localite_id], references: [id])
   date_creation       DateTime?           @default(now()) @db.Timestamp(6)
+  dernier_login       DateTime?           @db.Timestamp(6)
   audit_logs          audit_logs[]
   extractions         extractions[]
   utilisateur_roles   utilisateur_roles[]

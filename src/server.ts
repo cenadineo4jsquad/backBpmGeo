@@ -104,9 +104,7 @@ const start = async () => {
         }
       }
     }
-    server.log.info(
-      "\n==================== SERVEUR DEMARRE ===================="
-    );
+
     ipList.forEach((ip) => {
       server.log.info(
         `-> API disponible sur http://${ip}:${config.port}\n=========================================================`

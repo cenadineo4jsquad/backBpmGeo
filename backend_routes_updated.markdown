@@ -1236,3 +1236,5 @@ This document describes the REST API routes for the GeoBPM backend, developed wi
   Données sensibles (mot de passe, coord. GPS précises) chiffrées côté serveur via AES-256-GCM avec clé stockée dans **AWS Secrets Manager** et référencée via `env("AES_KEY")`.
 
 Pour des routes ou règles métier spécifiques, fournissez les détails requis.
+
+npx prisma migrate dev --name add_dernier_login_to_utilisateurs
