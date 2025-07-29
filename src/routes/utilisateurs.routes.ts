@@ -36,7 +36,7 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
 
   // Profil authentifié
   fastify.get(
-    "/me",
+    "/api/me",
     { preHandler: [authenticate] },
     async (req: FastifyRequest, reply: FastifyReply) => {
       const user = req.user as
@@ -89,19 +89,31 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
       refreshStore.set(String(userId), refresh_token);
 
       // Ajout des cookies
-      reply.setCookie("access_token", access_token, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: 60 * 15,
-      });
-      reply.setCookie("refresh_token", refresh_token, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
-      });
-      reply.send({ user: utilisateur });
+      // reply.setCookie("access_token", access_token, {
+      //   path: "/",
+      //   httpOnly: true,
+      //   sameSite: "none",
+      //   secure: true,
+      //   maxAge: 60 * 15,
+      // });
+      // reply.setCookie("refresh_token", refresh_token, {
+      //   path: "/",
+      //   httpOnly: true,
+      //   sameSite: "none",
+      //   secure: true,
+      //   maxAge: 60 * 60 * 24 * 7,
+      // });
+      let role = null;
+      if (
+        utilisateur.utilisateur_roles &&
+        utilisateur.utilisateur_roles.length > 0
+      ) {
+        const mainRole = utilisateur.utilisateur_roles[0];
+        if (mainRole.roles && mainRole.roles.nom) {
+          role = mainRole.roles.nom;
+        }
+      }
+      reply.send({ user: utilisateur, access_token, role });
     }
   );
 

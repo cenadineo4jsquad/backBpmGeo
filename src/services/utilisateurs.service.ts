@@ -41,6 +41,14 @@ export async function createUser({
 export async function getUserById(id: string) {
   return prisma.utilisateurs.findUnique({
     where: { id: parseInt(id) },
+    include: {
+      utilisateur_roles: {
+        include: {
+          roles: true,
+        },
+      },
+      localites: true,
+    },
   });
 }
 

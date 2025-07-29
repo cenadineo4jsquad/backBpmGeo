@@ -10,7 +10,7 @@ const pool = new Pool({
 });
 
 async function createAdmin() {
-  const email = "admin@example.com";
+  const email = "admin@gov.cm";
   const mot_de_passe = "motdepassefort"; // À changer en prod !
   const hash = await bcrypt.hash(mot_de_passe, 10);
 
@@ -29,8 +29,26 @@ async function createAdmin() {
   ];
 
   try {
+    // 1. Création de l'utilisateur admin
     const { rows } = await pool.query(query, values);
-    console.log("Admin créé avec l'id :", rows[0].id);
+    const adminId = rows[0].id;
+    console.log("Admin créé avec l'id :", adminId);
+
+    // 2. Récupération de l'id du rôle admin
+    const queryRole = `SELECT id FROM roles WHERE nom = 'admin' LIMIT 1`;
+    const { rows: roleRows } = await pool.query(queryRole);
+    if (!roleRows.length)
+      throw new Error("Le rôle 'admin' n'existe pas dans la table roles.");
+    const adminRoleId = roleRows[0].id;
+
+    // 3. Ajout du rôle admin à l'utilisateur dans la table de liaison
+    const queryUserRole = `
+    INSERT INTO utilisateur_roles (utilisateur_id, role_id)
+    VALUES ($1, $2)
+    ON CONFLICT (utilisateur_id, role_id) DO NOTHING
+  `;
+    await pool.query(queryUserRole, [adminId, adminRoleId]);
+    console.log("Rôle admin associé à l'utilisateur.");
   } catch (err) {
     if (err instanceof Error) {
       console.error("Erreur création admin :", err.message);
@@ -41,5 +59,4 @@ async function createAdmin() {
     await pool.end();
   }
 }
-
 createAdmin();

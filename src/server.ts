@@ -31,7 +31,12 @@ const pool = new Pool({
 
 // Ajout du support CORS
 server.register(cors, {
-  origin: true, // Autorise toutes les origines pendant le développement
+  origin: [
+    "http://localhost:5173",
+    // "https://localhost:5173",
+    "http://192.168.50.153:5173",
+    "https://10.100.213.22:3000",
+  ], // Autorise toutes les origines pendant le développement
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   exposedHeaders: ["Content-Range", "X-Content-Range"],

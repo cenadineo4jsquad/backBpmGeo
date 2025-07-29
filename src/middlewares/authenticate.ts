@@ -12,7 +12,12 @@ export async function authenticate(
   const token = authHeader.split(" ")[1];
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET as string);
-    (request as any).user = payload;
+    const { getUserById } = require("../services/utilisateurs.service");
+    const utilisateur = await getUserById(payload.sub);
+    if (!utilisateur) {
+      return reply.status(401).send({ error: "Utilisateur non trouvé" });
+    }
+    (request as any).user = utilisateur;
   } catch (err) {
     return reply.status(401).send({ error: "Missing or invalid JWT" });
   }
