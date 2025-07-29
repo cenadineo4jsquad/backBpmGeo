@@ -71,6 +71,8 @@ model projets {
   nom             String            @db.VarChar(150)
   description     String?
   date_creation   DateTime?         @default(now()) @db.Timestamp(6)
+  localite_id     Int?              // <-- Ajouté
+  localites       localites?        @relation(fields: [localite_id], references: [id]) // <-- Ajouté
   audit_logs      audit_logs[]
   etapes_workflow etapes_workflow[]
   extractions     extractions[]

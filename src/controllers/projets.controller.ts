@@ -31,7 +31,8 @@ export const createProject = async (
       description: newProject.description,
       date_creation: newProject.date_creation,
     });
-  } catch (error) {
+  } catch (err) {
+    console.error("Erreur lors de la creation du projet :", err);
     reply.status(500).send({ error: "Erreur lors de la création du projet" });
   }
 };
