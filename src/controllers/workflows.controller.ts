@@ -45,24 +45,6 @@ export const createWorkflowHandler = async (
   }
 };
 
-export const getWorkflowByIdHandler = async (
-  request: FastifyRequest,
-  reply: FastifyReply
-) => {
-  try {
-    const { id } = request.params as any;
-    const workflow = await getWorkflows({ id });
-    if (!workflow) {
-      return reply.status(404).send({ error: "Workflow non trouvé" });
-    }
-    reply.status(200).send(workflow);
-  } catch (error) {
-    reply
-      .status(500)
-      .send({ error: "Erreur lors de la récupération du workflow" });
-  }
-};
-
 export const submitToNextStageHandler = async (
   request: FastifyRequest,
   reply: FastifyReply

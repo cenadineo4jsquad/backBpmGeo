@@ -4,7 +4,7 @@ import {
   submitToNextStageHandler,
   validateTaskHandler,
   getWorkflowsHandler,
-  getWorkflowByIdHandler,
+  // getWorkflowByIdHandler,
 } from "../controllers/workflows.controller";
 import { authenticate } from "../middlewares/authenticate";
 import { restrictToAdmin } from "../middlewares/restrictToAdmin";
@@ -24,7 +24,7 @@ export default async function workflowsRoutes(fastify: FastifyInstance) {
   fastify.get(
     "/api/workflows/:id",
     { preHandler: [authenticate] },
-    getWorkflowByIdHandler
+    getWorkflowsHandler
   );
   fastify.post(
     "/api/workflows/submit",

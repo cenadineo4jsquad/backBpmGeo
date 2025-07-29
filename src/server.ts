@@ -5,6 +5,7 @@ import fastifyJwt from "@fastify/jwt";
 import fastifyMultipart from "@fastify/multipart"; // Assure-toi que le package est bien installé
 import routes from "./routes";
 import config from "./config";
+import fastifyCookie from "fastify-cookie";
 
 const server = fastify({
   logger: {
@@ -40,6 +41,7 @@ server.register(cors, {
 
 server.register(fastifyJwt, { secret: config.jwt.secret });
 server.register(fastifyMultipart);
+server.register(fastifyCookie);
 
 // Register routes
 routes.forEach((route: any) => {

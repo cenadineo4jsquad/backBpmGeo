@@ -1,3 +1,9 @@
+// src/services/utilisateurs.service.ts
+// Squelette du service utilisateurs pour Fastify
+
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
+
 export async function getUserByEmail(email: string) {
   return prisma.utilisateurs.findUnique({
     where: { email },
@@ -10,11 +16,6 @@ export async function getUserByEmail(email: string) {
     },
   });
 }
-// src/services/utilisateurs.service.ts
-// Squelette du service utilisateurs pour Fastify
-
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
 
 export async function createUser({
   nom,

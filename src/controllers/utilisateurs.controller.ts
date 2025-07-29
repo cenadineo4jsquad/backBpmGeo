@@ -7,15 +7,21 @@ export const loginHandler = async (
   reply: FastifyReply
 ) => {
   const { email, mot_de_passe } = request.body as any;
+  console.log("[LOGIN] Tentative de connexion avec email:", email); // <-- ici
   try {
     const utilisateur = await utilisateurService.getUserByEmail(email);
+    console.log("[LOGIN] Utilisateur trouvé:", utilisateur); // <-- ici
     if (!utilisateur) {
+      console.log("[LOGIN] Aucun utilisateur trouvé pour cet email."); // <-- ici
       return reply
         .status(401)
         .send({ error: "Email ou mot de passe incorrect" });
     }
     const passwordMatch = await compare(mot_de_passe, utilisateur.mot_de_passe);
+    console.log("[LOGIN] Password match:", passwordMatch); // <-- ici
     if (!passwordMatch) {
+      console.log("[LOGIN] Mot de passe incorrect."); // <-- ici
+
       return reply
         .status(401)
         .send({ error: "Email ou mot de passe incorrect" });
@@ -43,6 +49,7 @@ export const loginHandler = async (
       },
     });
   } catch (error) {
+    console.error("[LOGIN] Erreur serveur:", error); // <-- ici
     reply.status(500).send({ error: "Erreur serveur" });
   }
 };

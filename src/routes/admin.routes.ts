@@ -30,8 +30,8 @@ async function getAdminStats(request: FastifyRequest, reply: FastifyReply) {
     ]);
     // Dernier login
     const dernier = await prisma.utilisateurs.findFirst({
-      orderBy: { dernier_login_at: "desc" },
-      select: { dernier_login_at: true },
+      orderBy: { date_creation: "desc" },
+      select: { date_creation: true },
     });
     reply.send({
       utilisateurs,
@@ -40,7 +40,7 @@ async function getAdminStats(request: FastifyRequest, reply: FastifyReply) {
       titres_fonciers,
       workflows,
       logs,
-      dernier_login: dernier?.dernier_login || null,
+      dernier_login: dernier?.date_creation || null,
     });
   } catch (error) {
     reply.status(500).send({ error: "Erreur serveur" });
