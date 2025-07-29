@@ -53,6 +53,7 @@ model localites {
   type         String         @db.VarChar(50)
   valeur       String         @db.VarChar(255)
   utilisateurs utilisateurs[]
+  projets      projets[]      // <-- Relation inverse ajoutée
 
   @@unique([type, valeur])
 }
