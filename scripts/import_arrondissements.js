@@ -1,15 +1,16 @@
 // Script Node.js pour importer les arrondissements depuis Arrondissements.geojson dans la table localites
 // Utilise pg et fs
 
+require("dotenv").config();
 const fs = require("fs");
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  user: "Cenadi-Squad",
-  host: "localhost",
-  database: "geobpm",
-  password: "",
-  port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT ?? "5432", 10),
 });
 
 async function importArrondissements() {

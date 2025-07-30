@@ -4,13 +4,7 @@ export class RoleModel {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool({
-      user: process.env.DB_USER || "postgres",
-      host: "localhost",
-      database: process.env.DB_NAME || "geobpm",
-      password: "password",
-      port: 5432,
-    });
+    this.pool = require("../config/pool").default;
   }
 
   async getAllRoles() {
@@ -25,17 +19,29 @@ export class RoleModel {
     description: string
   ) {
     const query = `
-            INSERT INTO roles (projet_id, nom, niveau_hierarchique, description)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *;
-        `;
-    const result = await this.pool.query(query, [
+      INSERT INTO roles (projet_id, nom, niveau_hierarchique, description)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *;
+    `;
+    console.log("[createRole] params:", {
       projetId,
       nom,
       niveauHierarchique,
       description,
-    ]);
-    return result.rows[0];
+    });
+    try {
+      const result = await this.pool.query(query, [
+        projetId,
+        nom,
+        niveauHierarchique,
+        description,
+      ]);
+      console.log("[createRole] result:", result.rows);
+      return result.rows[0];
+    } catch (err) {
+      console.error("[createRole] SQL ERROR:", err);
+      throw err;
+    }
   }
 
   async updateRole(

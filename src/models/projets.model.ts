@@ -85,7 +85,7 @@ export class Projet {
     // Hypothèse : la table projets a une colonne localite_type et localite_valeur (sinon à adapter)
     const results = await prisma.projets.findMany({
       where: {
-        localiteId: localite ? parseInt(localite.valeur) : undefined,
+        localite_id: localite ? parseInt(localite.valeur) : undefined,
       },
     });
     return results.map(

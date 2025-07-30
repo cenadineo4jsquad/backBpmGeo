@@ -4,13 +4,7 @@ export class UtilisateurModel {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool({
-      user: process.env.DB_USER || "postgres",
-      host: "localhost",
-      database: process.env.DB_NAME || "geobpm",
-      password: "password",
-      port: 5432,
-    });
+    this.pool = require("../config/pool").default;
   }
 
   async createUtilisateur(

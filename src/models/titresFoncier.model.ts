@@ -14,13 +14,7 @@ export class TitresFoncierModel {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool({
-      user: process.env.DB_USER || "postgres",
-      host: "localhost",
-      database: process.env.DB_NAME || "geobpm",
-      password: "password",
-      port: 5432,
-    });
+    this.pool = require("../config/pool").default;
   }
 
   async create(titre: TitresFoncier): Promise<TitresFoncier> {
@@ -64,7 +58,7 @@ export class TitresFoncierModel {
   async delete(id: number): Promise<boolean> {
     const query = "DELETE FROM titres_fonciers WHERE id = $1;";
     const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async findAll(): Promise<TitresFoncier[]> {

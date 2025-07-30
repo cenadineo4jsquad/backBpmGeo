@@ -1,11 +1,4 @@
-import { Pool } from "pg";
-const pool = new Pool({
-  user: process.env.DB_USER || "postgres",
-  host: process.env.DB_HOST || "localhost",
-  database: process.env.DB_NAME || "geobpm",
-  password: process.env.DB_PASSWORD || "password",
-  port: parseInt(process.env.DB_PORT ?? "5432", 10),
-});
+import pool from "../config/pool";
 /**
  * Récupère la liste des workflows avec filtrage projet_id, titre_foncier_id, statut, localite (pour niveaux 1-2)
  */

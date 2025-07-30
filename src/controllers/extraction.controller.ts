@@ -70,9 +70,9 @@ class ExtractionController {
 
       // Récupérer toutes les extractions
       let rows = await this.extractionService.getExtractions({
-        projet_id,
+        projetId: projet_id,
         statut,
-        utilisateur_id,
+        utilisateurId: utilisateur_id,
       });
 
       // Filtrage localité pour niveaux 1-2
@@ -107,7 +107,7 @@ class ExtractionController {
           row.date_extraction instanceof Date
             ? row.date_extraction.toISOString()
             : row.date_extraction,
-        titre_foncier_id: row.titre_foncier_id,
+        // titre_foncier_id retiré car non présent dans le type
       }));
       reply.send(formatted);
     } catch (error) {
@@ -153,7 +153,7 @@ class ExtractionController {
           extraction.date_extraction instanceof Date
             ? extraction.date_extraction.toISOString()
             : extraction.date_extraction,
-        titre_foncier_id: extraction.titre_foncier_id,
+        // titre_foncier_id retiré car non présent dans le type
       };
       reply.send(formatted);
     } catch (error) {
@@ -277,7 +277,7 @@ class ExtractionController {
         seuil_confiance: flaskResult.seuil_confiance || 90.0,
         statut: flaskResult.statut || "Extrait",
         date_extraction: flaskResult.date_extraction || now.toISOString(),
-        titre_foncier_id: flaskResult.titre_foncier_id || 1,
+        // titre_foncier_id retiré car non présent dans le type
         workflow_id: flaskResult.workflow_id || 1,
       };
       reply.status(201).send(response);
@@ -332,7 +332,7 @@ class ExtractionController {
           updated.date_extraction instanceof Date
             ? updated.date_extraction.toISOString()
             : updated.date_extraction,
-        titre_foncier_id: updated.titre_foncier_id,
+        // titre_foncier_id retiré car non présent dans le type
       };
       reply.status(200).send(formatted);
     } catch (error) {

@@ -48,21 +48,20 @@ export const assignUserToRole = async (
         .status(400)
         .send({ error: "Utilisateur déjà assigné à ce rôle" });
     }
-    await utilisateurRolesModel.assignUserToRole(
-      Number(utilisateur_id),
-      Number(id)
-    );
-    reply
-      .status(201)
-      .send({ utilisateur_id: Number(utilisateur_id), role_id: Number(id) });
+    const result = await utilisateurRolesModel.assignUserToRole(utilisateur_id, id);
+    reply.code(201).send(result);
   } catch (err: any) {
     if (err.message === "ALREADY_ASSIGNED") {
       return reply
         .status(400)
         .send({ error: "Utilisateur déjà assigné à ce rôle" });
     }
+    console.error("[assignUserToRole Controller] ERROR:", err);
     reply
-      .status(500)
-      .send({ error: "Erreur lors de l'attribution du rôle à l'utilisateur" });
+      .code(500)
+      .send({
+        error: "Erreur lors de l'attribution du rôle à l'utilisateur",
+        details: err?.message,
+      });
   }
 };

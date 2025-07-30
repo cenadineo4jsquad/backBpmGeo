@@ -72,21 +72,25 @@ model projets {
   nom             String            @db.VarChar(150)
   description     String?
   date_creation   DateTime?         @default(now()) @db.Timestamp(6)
-  localite_id     Int?              // <-- Ajouté
-  localites       localites?        @relation(fields: [localite_id], references: [id]) // <-- Ajouté
+  localite_id     Int?
+  localites       localites?        @relation(fields: [localite_id], references: [id])
   audit_logs      audit_logs[]
   etapes_workflow etapes_workflow[]
   extractions     extractions[]
   titres_fonciers titres_fonciers[]
   workflows       workflows[]
+  roles           roles[]           // <-- Ajoute cette ligne
 }
 
 model roles {
   id                Int                 @id @default(autoincrement())
+  projet_id         Int?
   nom               String              @unique @db.VarChar(50)
+  niveau_hierarchique Int?               // <-- Ajoute cette ligne
   description       String?
   permissions       permissions[]
   utilisateur_roles utilisateur_roles[]
+  projets           projets?            @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model titres_extractions {

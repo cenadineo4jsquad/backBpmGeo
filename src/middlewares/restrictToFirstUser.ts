@@ -1,13 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { Pool } from "pg";
-
-const pool = new Pool({
-  user: "Cenadi-Squad",
-  host: "localhost",
-  database: "geobpm",
-  password: "",
-  port: 5432,
-});
+import pool from "../config/pool";
 
 export const restrictToFirstUser = async (
   request: FastifyRequest,

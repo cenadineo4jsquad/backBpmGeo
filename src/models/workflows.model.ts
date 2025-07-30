@@ -1,12 +1,6 @@
 import { Pool } from "pg";
 
-const pool = new Pool({
-  user: process.env.DB_USER || "postgres",
-  host: "localhost",
-  database: process.env.DB_NAME || "geobpm",
-  password: "password",
-  port: 5432,
-});
+import pool from "../config/pool";
 
 export interface Workflow {
   id: number;
