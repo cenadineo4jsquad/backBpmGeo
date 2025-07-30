@@ -11,16 +11,10 @@ export const getRoles = async (
     return reply.status(403).send({ error: "Réservé aux administrateurs" });
   }
   try {
-    const roles = await roleModel.getAllRoles();
-    // Formatage strict de la réponse comme dans la doc
-    const formatted = roles.map((r: any) => ({
-      id: r.id,
-      projet_id: r.projet_id,
-      nom: r.nom,
-      niveau_hierarchique: r.niveau_hierarchique,
-      description: r.description,
-    }));
-    reply.send(formatted);
+    const roles = await prisma.roles.findMany({
+      include: { permissions: true },
+    });
+    reply.send(roles);
   } catch (error) {
     reply
       .status(500)
@@ -30,6 +24,8 @@ export const getRoles = async (
 
 import { FastifyRequest, FastifyReply } from "fastify";
 import { RoleModel } from "../models/roles.model";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
 const roleModel = new RoleModel();
 
@@ -37,7 +33,6 @@ export const createRole = async (
   request: FastifyRequest,
   reply: FastifyReply
 ) => {
-  // Vérification authentification et admin
   const userRaw = request.user;
   if (!userRaw || typeof userRaw !== "object") {
     return reply.status(401).send({ error: "Non autorisé" });
@@ -47,7 +42,7 @@ export const createRole = async (
     return reply.status(403).send({ error: "Réservé aux administrateurs" });
   }
   try {
-    const { projet_id, nom, niveau_hierarchique, description } =
+    const { projet_id, nom, niveau_hierarchique, description, permissions } =
       request.body as any;
     if (
       projet_id === undefined ||
@@ -55,24 +50,27 @@ export const createRole = async (
       niveau_hierarchique === undefined ||
       !description
     ) {
-      return reply.status(400).send({ error: "Champs requis manquants" });
+      const existing = await prisma.roles.findUnique({ where: { nom } });
+      if (existing) {
+        return reply.status(400).send({ error: "Nom de rôle déjà utilisé" });
+      }
     }
-    const newRole = await roleModel.createRole(
-      projet_id,
-      nom,
-      niveau_hierarchique,
-      description
-    );
-    // Formatage strict de la réponse
-    const formatted = {
-      id: newRole.id,
-      projet_id: newRole.projet_id,
-      nom: newRole.nom,
-      niveau_hierarchique: newRole.niveau_hierarchique,
-      description: newRole.description,
-    };
-    reply.status(201).send(formatted);
+    // Création du rôle + permissions imbriquées
+    const newRole = await prisma.roles.create({
+      data: {
+        projet_id,
+        nom,
+        niveau_hierarchique,
+        description,
+        permissions: permissions
+          ? { create: permissions } // [{ action: "extract_data" }, ...]
+          : undefined,
+      },
+      include: { permissions: true },
+    });
+    reply.status(201).send(newRole);
   } catch (error) {
+    console.error(error); // Ajoute ceci
     reply.status(500).send({ error: "Erreur lors de la création du rôle" });
   }
 };
@@ -84,12 +82,10 @@ export const updateRole = async (
   try {
     const { id } = request.params as any;
     const { nom, niveau_hierarchique, description } = request.body as any;
-    const updatedRole = await roleModel.updateRole(
-      Number(id),
-      nom,
-      niveau_hierarchique,
-      description
-    );
+    const updatedRole = await prisma.roles.update({
+      where: { id: Number(id) },
+      data: { nom, niveau_hierarchique, description },
+    });
     if (!updatedRole) {
       return reply.status(404).send({ error: "Rôle non trouvé" });
     }
@@ -105,10 +101,7 @@ export const deleteRole = async (
 ) => {
   try {
     const { id } = request.params as any;
-    const deletedRole = await roleModel.deleteRole(Number(id));
-    if (!deletedRole) {
-      return reply.status(404).send({ error: "Rôle non trouvé" });
-    }
+    await prisma.roles.delete({ where: { id: Number(id) } });
     reply.status(204).send();
   } catch (error) {
     reply.status(500).send({ error: "Erreur lors de la suppression du rôle" });
@@ -121,7 +114,10 @@ export const getRolesByProject = async (
 ) => {
   try {
     const { projetId } = request.params as any;
-    const roles = await roleModel.getRolesByProject(Number(projetId));
+    const roles = await prisma.roles.findMany({
+      where: { projet_id: Number(projetId) },
+      include: { permissions: true },
+    });
     reply.send(roles);
   } catch (error) {
     reply
