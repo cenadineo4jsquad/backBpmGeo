@@ -408,7 +408,7 @@ This document describes the REST API routes for the GeoBPM backend, developed wi
 
 ### GET /api/localites/autocomplete
 
-- **Description**: Autocompletes localities for user/project configuration (level 4 only).
+- **Description**: Autocomplète les localités pour la configuration utilisateur/projet (niveau 4 uniquement).
 - **Header**: `Authorization: Bearer <token>`
 - **Query**: `?type=arrondissement|departement&terme=string`
 - **Response** (200):
@@ -419,6 +419,85 @@ This document describes the REST API routes for the GeoBPM backend, developed wi
   - 400: `{ "error": "Type de localité invalide" }`
   - 403: `{ "error": "Réservé aux administrateurs" }`
   - 401: `{ "error": "Non autorisé" }`
+
+---
+
+## Authentification avancée JWT
+
+### Durée de vie du token
+
+Le token JWT est généré avec une durée de vie de **1 heure** :
+
+```typescript
+import jwt from "jsonwebtoken";
+
+const token = jwt.sign(
+  { id: user.id, email: user.email },
+  process.env.JWT_SECRET,
+  { expiresIn: "1h" }
+);
+```
+
+### Refresh token
+
+Un refresh token est généré pour permettre le renouvellement sans reconnexion :
+
+```typescript
+const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET, {
+  expiresIn: "7d",
+});
+```
+
+### Route de renouvellement (/api/refresh)
+
+```typescript
+app.post("/api/refresh", async (req, res) => {
+  const { refreshToken } = req.body;
+  try {
+    const payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const newToken = jwt.sign({ id: payload.id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    res.json({ token: newToken });
+  } catch (err) {
+    res.status(401).json({ error: "Refresh token invalide ou expiré" });
+  }
+});
+```
+
+### Exemple frontend (renouvellement automatique)
+
+```javascript
+// À placer dans ton setup axios (ex: src/axios.js)
+axios.interceptors.response.use(null, async (error) => {
+  if (
+    error.response?.status === 401 &&
+    error.response?.data?.error === "Missing or invalid JWT"
+  ) {
+    const refresh_token = localStorage.getItem("refresh_token");
+    if (!refresh_token) return Promise.reject(error);
+    try {
+      const res = await axios.post("/api/refresh", {
+        refresh_token,
+      });
+      // Met à jour le token d'accès et le refresh_token
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("refresh_token", res.data.refresh_token);
+      error.config.headers["Authorization"] = "Bearer " + res.data.token;
+      // Rejoue la requête originale
+      return axios(error.config);
+    } catch (e) {
+      // Si le refresh échoue, déconnecte l'utilisateur
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      // Redirige vers la page de login si besoin
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+  }
+  return Promise.reject(error);
+});
+```
 
 ---
 

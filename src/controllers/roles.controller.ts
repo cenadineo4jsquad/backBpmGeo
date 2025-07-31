@@ -44,17 +44,13 @@ export const createRole = async (
   try {
     const { projet_id, nom, niveau_hierarchique, description, permissions } =
       request.body as any;
-    if (
-      projet_id === undefined ||
-      !nom ||
-      niveau_hierarchique === undefined ||
-      !description
-    ) {
-      const existing = await prisma.roles.findUnique({ where: { nom } });
-      if (existing) {
-        return reply.status(400).send({ error: "Nom de rôle déjà utilisé" });
-      }
+
+    // Vérifie si le nom existe déjà
+    const existing = await prisma.roles.findUnique({ where: { nom } });
+    if (existing) {
+      return reply.status(400).send({ error: "Nom de rôle déjà utilisé" });
     }
+
     // Création du rôle + permissions imbriquées
     const newRole = await prisma.roles.create({
       data: {
@@ -62,15 +58,13 @@ export const createRole = async (
         nom,
         niveau_hierarchique,
         description,
-        permissions: permissions
-          ? { create: permissions } // [{ action: "extract_data" }, ...]
-          : undefined,
+        permissions: permissions ? { create: permissions } : undefined,
       },
       include: { permissions: true },
     });
     reply.status(201).send(newRole);
   } catch (error) {
-    console.error(error); // Ajoute ceci
+    console.error(error);
     reply.status(500).send({ error: "Erreur lors de la création du rôle" });
   }
 };

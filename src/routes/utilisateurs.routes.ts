@@ -29,8 +29,9 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
   // Store refresh tokens (à remplacer par Redis ou DB en prod)
   const refreshStore = new Map<string, string>();
   const JWT_SECRET = process.env.JWT_SECRET || "secret";
-  const REFRESH_SECRET = process.env.REFRESH_SECRET || "refresh_secret";
+  const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refresh_secret";
   const REFRESH_EXPIRES_IN = "7d";
+  const ACCESS_EXPIRES_IN = "1h";
 
   /* ---------------------------- Routes ------------------------------ */
 
@@ -79,7 +80,7 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
       const access_token = jwt.sign(
         { sub: userId, email: utilisateur.email },
         JWT_SECRET,
-        { expiresIn: "15m" }
+        { expiresIn: ACCESS_EXPIRES_IN }
       );
       const refresh_token = jwt.sign(
         { sub: userId, email: utilisateur.email },
@@ -87,22 +88,6 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
         { expiresIn: REFRESH_EXPIRES_IN }
       );
       refreshStore.set(String(userId), refresh_token);
-
-      // Ajout des cookies
-      // reply.setCookie("access_token", access_token, {
-      //   path: "/",
-      //   httpOnly: true,
-      //   sameSite: "none",
-      //   secure: true,
-      //   maxAge: 60 * 15,
-      // });
-      // reply.setCookie("refresh_token", refresh_token, {
-      //   path: "/",
-      //   httpOnly: true,
-      //   sameSite: "none",
-      //   secure: true,
-      //   maxAge: 60 * 60 * 24 * 7,
-      // });
       let role = null;
       if (
         utilisateur.utilisateur_roles &&
@@ -113,7 +98,7 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
           role = mainRole.roles.nom;
         }
       }
-      reply.send({ user: utilisateur, access_token, role });
+      reply.send({ user: utilisateur, access_token, refresh_token, role });
     }
   );
 
@@ -138,16 +123,9 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
         const access_token = jwt.sign(
           { sub: utilisateur.id, email: utilisateur.email },
           JWT_SECRET,
-          { expiresIn: "15m" }
+          { expiresIn: ACCESS_EXPIRES_IN }
         );
-        // Ajout du cookie
-        reply.setCookie("access_token", access_token, {
-          path: "/",
-          httpOnly: true,
-          sameSite: "lax",
-          maxAge: 60 * 15,
-        });
-        reply.send({ user: utilisateur });
+        reply.send({ token: access_token, refresh_token });
       } catch (e) {
         return reply
           .code(401)
@@ -195,11 +173,7 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
       }
       const token = req.headers.authorization?.split(" ")[1];
       if (token) fastify.jwtBlacklist.add(token);
-      reply
-        .clearCookie("access_token", { path: "/" })
-        .clearCookie("refresh_token", { path: "/" })
-        .code(204)
-        .send();
+      reply.code(204).send();
     }
   );
 }
