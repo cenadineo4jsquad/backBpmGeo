@@ -13,6 +13,7 @@ export async function getUserByEmail(email: string) {
           roles: true,
         },
       },
+      localites: true, // Inclure les informations de localité
     },
   });
 }
@@ -26,15 +27,28 @@ export async function createUser({
   localite,
 }: any) {
   // À compléter avec la logique de création
+  // Si localite est un string (nom), on cherche l'id correspondant
+  let localite_id: number | undefined = undefined;
+  if (typeof localite === "string" && localite.length > 0) {
+    const found = await prisma.localites.findFirst({
+      where: { valeur: localite },
+    });
+    if (found) localite_id = found.id;
+  } else if (localite && localite.id) {
+    localite_id = parseInt(localite.id);
+  }
+  const data: any = {
+    nom,
+    prenom,
+    email,
+    mot_de_passe: hashedPassword,
+    niveau_hierarchique,
+  };
+  if (localite_id) {
+    data.localite_id = localite_id;
+  }
   return prisma.utilisateurs.create({
-    data: {
-      nom,
-      prenom,
-      email,
-      mot_de_passe: hashedPassword,
-      niveau_hierarchique,
-      localite_id: localite?.id ? parseInt(localite.id) : null,
-    },
+    data,
   });
 }
 
@@ -89,5 +103,9 @@ export async function deleteUser(id: string) {
 }
 
 export async function getAllUsers() {
-  return prisma.utilisateurs.findMany();
+  return prisma.utilisateurs.findMany({
+    include: {
+      localites: true,
+    },
+  });
 }

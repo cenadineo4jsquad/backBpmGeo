@@ -2,10 +2,16 @@
 import { Pool } from "pg";
 import { TitresFoncier } from "../models/titresFoncier.model";
 import { AuditLog } from "../models/auditLogs.model";
+import { GeographicAccessService } from "./geographicAccess.service";
 
 import pool from "../config/pool";
 
 export class TitreFoncierService {
+  private geographicAccess: GeographicAccessService;
+
+  constructor() {
+    this.geographicAccess = new GeographicAccessService(pool);
+  }
   async findAllTitresFoncier() {
     const result = await pool.query("SELECT * FROM titres_fonciers");
     return result.rows;
@@ -59,11 +65,23 @@ export class TitreFoncierService {
     await pool.query("DELETE FROM titres_fonciers WHERE id = $1", [id]);
   }
 
-  async getTitresGeojson(localite?: string) {
+  async getTitresGeojson(localite?: any, niveau_hierarchique?: number) {
     let query = "SELECT * FROM titres_fonciers";
-    const params: any[] = [];
+    let params: any[] = [];
 
-    if (localite) {
+    if (localite && niveau_hierarchique) {
+      const { whereClause, params: whereParams } =
+        this.geographicAccess.buildHierarchicalWhereClause(
+          niveau_hierarchique,
+          localite
+        );
+
+      if (whereClause) {
+        query += ` ${whereClause}`;
+        params = whereParams;
+      }
+    } else if (localite) {
+      // Ancienne logique pour compatibilité
       query += " WHERE localite = $1";
       params.push(localite);
     }
@@ -80,6 +98,7 @@ export class TitreFoncierService {
         id: row.id,
         nom: row.nom || row.projet_id || "",
         proprietaire: row.proprietaire,
+        localite: row.localite,
       },
     }));
 
@@ -88,15 +107,15 @@ export class TitreFoncierService {
       features,
     };
   }
-  async getTitresFoncier(localite: string, niveau_hierarchique: number) {
-    const query = `
-      SELECT * FROM titres_fonciers
-      WHERE 
-        (niveau_hierarchique = 1 AND localite->>'valeur' = $1) OR
-        (niveau_hierarchique = 2 AND localite->>'valeur' = $1) OR
-        (niveau_hierarchique >= 3)
-    `;
-    const result = await pool.query(query, [localite]);
+  async getTitresFoncier(localite: any, niveau_hierarchique: number) {
+    const { whereClause, params } =
+      this.geographicAccess.buildHierarchicalWhereClause(
+        niveau_hierarchique,
+        localite
+      );
+
+    const query = `SELECT * FROM titres_fonciers ${whereClause}`;
+    const result = await pool.query(query, params);
     return result.rows;
   }
 
@@ -142,6 +161,44 @@ export class TitreFoncierService {
       if (row.perimetre !== undefined) row.perimetre = Number(row.perimetre);
     }
     return row;
+  }
+
+  /**
+   * Obtient les statistiques d'accès pour un utilisateur donné
+   */
+  async getAccessStatistics(niveau_hierarchique: number, localite: any) {
+    return await this.geographicAccess.getAccessStats(
+      niveau_hierarchique,
+      localite
+    );
+  }
+
+  /**
+   * Vérifie si un utilisateur a accès à une localité donnée
+   */
+  async hasAccessToLocalite(
+    userNiveau: number,
+    userLocalite: any,
+    targetLocalite: string
+  ): Promise<boolean> {
+    return await this.geographicAccess.hasAccessToLocalite(
+      userNiveau,
+      userLocalite,
+      targetLocalite
+    );
+  }
+
+  /**
+   * Récupère toutes les localités accessibles par un utilisateur
+   */
+  async getAccessibleLocalites(
+    niveau_hierarchique: number,
+    localite: any
+  ): Promise<string[]> {
+    return await this.geographicAccess.getAccessibleLocalites(
+      niveau_hierarchique,
+      localite
+    );
   }
 
   private async logAudit(

@@ -86,14 +86,35 @@ export const getTitresGeojson = async (
   try {
     const user = request.user as any;
     let geojson;
-    if (user.niveau_hierarchique === 1 || user.niveau_hierarchique === 2) {
-      geojson = await titreFoncierService.getTitresGeojson(
-        user.localite?.valeur
-      );
-    } else {
+
+    // Utiliser les informations d'accès géographique du middleware d'authentification
+    if (user.geographic_access.can_access_all) {
+      // Niveau central - accès à tout
       geojson = await titreFoncierService.getTitresGeojson();
+    } else {
+      // Autres niveaux - accès selon hiérarchie
+      geojson = await titreFoncierService.getTitresGeojson(
+        user.localites,
+        user.niveau_hierarchique
+      );
     }
-    reply.status(200).send(geojson);
+
+    // Ajouter des métadonnées d'accès au GeoJSON
+    const response = {
+      ...geojson,
+      metadata: {
+        user_access: {
+          niveau_hierarchique: user.niveau_hierarchique,
+          localite_principale: user.geographic_access.primary_localite,
+          features_count: geojson.features.length,
+          access_scope: user.geographic_access.can_access_all
+            ? "global"
+            : "restricted",
+        },
+      },
+    };
+
+    reply.status(200).send(response);
   } catch (error) {
     reply
       .status(500)
@@ -113,14 +134,19 @@ export const getTitresFoncier = async (
   try {
     const user = request.user as any;
     let titres;
-    if (user.niveau_hierarchique === 4) {
+
+    // Utiliser les informations d'accès géographique du middleware d'authentification
+    if (user.geographic_access.can_access_all) {
+      // Niveau central - accès à tous les titres
       titres = await titreFoncierService.findAllTitresFoncier();
     } else {
+      // Autres niveaux - accès selon hiérarchie géographique
       titres = await titreFoncierService.getTitresFoncier(
-        user.localite,
+        user.localites,
         user.niveau_hierarchique
       );
     }
+
     // Format strict selon la doc
     const titresFormates = (titres || []).map((t: any) => ({
       id: t.id,
@@ -131,11 +157,69 @@ export const getTitresFoncier = async (
       coordonnees_gps: t.coordonnees_gps,
       localite: t.localite,
     }));
-    reply.status(200).send(titresFormates);
+
+    // Ajouter des informations de contexte d'accès dans la réponse
+    const response = {
+      titres: titresFormates,
+      access_info: {
+        niveau_utilisateur: user.niveau_hierarchique,
+        localite_principale: user.geographic_access.primary_localite,
+        total_accessible: titresFormates.length,
+        localites_accessibles:
+          user.geographic_access.accessible_localites.length,
+      },
+    };
+
+    reply.status(200).send(response);
   } catch (error) {
     reply
       .status(500)
       .send({ error: "Erreur lors de la récupération des titres fonciers" });
+  }
+};
+
+export const getAccessStatistics = async (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
+  try {
+    const user = request.user as any;
+    const stats = await titreFoncierService.getAccessStatistics(
+      user.niveau_hierarchique,
+      user.localites
+    );
+
+    reply.status(200).send(stats);
+  } catch (error) {
+    reply
+      .status(500)
+      .send({
+        error: "Erreur lors de la récupération des statistiques d'accès",
+      });
+  }
+};
+
+export const getAccessibleLocalites = async (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
+  try {
+    const user = request.user as any;
+    const localites = await titreFoncierService.getAccessibleLocalites(
+      user.niveau_hierarchique,
+      user.localites
+    );
+
+    reply.status(200).send({
+      total: localites.length,
+      localites: localites,
+    });
+  } catch (error) {
+    reply
+      .status(500)
+      .send({
+        error: "Erreur lors de la récupération des localités accessibles",
+      });
   }
 };
 

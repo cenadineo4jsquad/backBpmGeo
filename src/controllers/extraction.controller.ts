@@ -77,7 +77,7 @@ class ExtractionController {
 
       // Filtrage localité pour niveaux 1-2
       if ([1, 2].includes(user.niveau_hierarchique)) {
-        if (!user.localite || !user.localite.type || !user.localite.valeur) {
+        if (!user.localites || !user.localites.type || !user.localites.valeur) {
           return reply.status(403).send({ error: "Accès interdit" });
         }
         rows = rows.filter((extraction: any) => {
@@ -87,9 +87,10 @@ class ExtractionController {
           )
             return false;
           return (
-            extraction.donnees_extraites.localite.type === user.localite.type &&
+            extraction.donnees_extraites.localite.type ===
+              user.localites.type &&
             extraction.donnees_extraites.localite.valeur ===
-              user.localite.valeur
+              user.localites.valeur
           );
         });
       }
@@ -245,12 +246,12 @@ class ExtractionController {
       }
       // Vérification localité autorisée (si niveau 1 ou 2)
       if ([1, 2].includes(user.niveau_hierarchique)) {
-        if (!user.localite || !user.localite.type || !user.localite.valeur) {
+        if (!user.localites || !user.localites.type || !user.localites.valeur) {
           return reply.status(403).send({ error: "Localité non autorisée" });
         }
         if (
-          user.localite.type !== localite.type ||
-          user.localite.valeur !== localite.valeur
+          user.localites.type !== localite.type ||
+          user.localites.valeur !== localite.valeur
         ) {
           return reply.status(403).send({ error: "Localité non autorisée" });
         }

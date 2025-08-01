@@ -5,6 +5,8 @@ import {
   createTitreFoncier,
   deleteTitreFoncier,
   getTitresGeojson,
+  getAccessStatistics,
+  getAccessibleLocalites,
 } from "../controllers/titresFoncier.controller";
 import { FastifyInstance } from "fastify";
 import { authenticate } from "../middlewares/authenticate";
@@ -44,8 +46,23 @@ export default async function titresFoncierRoutes(fastify: FastifyInstance) {
   );
   // Route GeoJSON
   fastify.get(
-  "/api/titres_fonciers/geojson",
-  { preHandler: [authenticate] },
-  getTitresGeojson
-);
+    "/api/titres_fonciers/geojson",
+    { preHandler: [authenticate] },
+    getTitresGeojson
+  );
+
+  // Nouvelles routes pour l'accès hiérarchique
+  // Statistiques d'accès de l'utilisateur connecté
+  fastify.get(
+    "/api/titres_fonciers/access/stats",
+    { preHandler: [authenticate] },
+    getAccessStatistics
+  );
+
+  // Localités accessibles par l'utilisateur connecté
+  fastify.get(
+    "/api/titres_fonciers/access/localites",
+    { preHandler: [authenticate] },
+    getAccessibleLocalites
+  );
 }

@@ -63,44 +63,8 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Authentification
-  // Authentification avec refresh token
-  fastify.post(
-    "/api/login",
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const { email, mot_de_passe } = req.body as any;
-      const utilisateur = await getUserByEmail(email);
-      if (
-        !utilisateur ||
-        !(await compare(mot_de_passe, utilisateur.mot_de_passe))
-      ) {
-        return reply.code(401).send({ error: "Identifiants invalides" });
-      }
-      const userId = utilisateur.id;
-      const access_token = jwt.sign(
-        { sub: userId, email: utilisateur.email },
-        JWT_SECRET,
-        { expiresIn: ACCESS_EXPIRES_IN }
-      );
-      const refresh_token = jwt.sign(
-        { sub: userId, email: utilisateur.email },
-        REFRESH_SECRET,
-        { expiresIn: REFRESH_EXPIRES_IN }
-      );
-      refreshStore.set(String(userId), refresh_token);
-      let role = null;
-      if (
-        utilisateur.utilisateur_roles &&
-        utilisateur.utilisateur_roles.length > 0
-      ) {
-        const mainRole = utilisateur.utilisateur_roles[0];
-        if (mainRole.roles && mainRole.roles.nom) {
-          role = mainRole.roles.nom;
-        }
-      }
-      reply.send({ user: utilisateur, access_token, refresh_token, role });
-    }
-  );
+  // Authentification (login enrichi via contrôleur)
+  fastify.post("/api/login", loginHandler);
 
   // Refresh token
   fastify.post(

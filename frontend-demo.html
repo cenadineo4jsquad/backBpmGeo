@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BPM Extraction - Demo Frontend</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      .login-form {
+        max-width: 400px;
+        margin: 0 auto;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .user-info {
+        background-color: #e9ecef;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+      .extraction-card {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+      }
+      .actions {
+        margin-top: 10px;
+      }
+      .actions button {
+        width: auto;
+        margin-right: 10px;
+        padding: 5px 15px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+      }
+      .test-accounts {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+      .account-btn {
+        display: inline-block;
+        background-color: #28a745;
+        color: white;
+        padding: 5px 10px;
+        margin: 2px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Le contenu sera généré par JavaScript -->
+    </div>
+
+    <script>
+      // Configuration API
+      const API_BASE_URL = "http://localhost:3000";
+
+      // État global de l'application
+      let currentUser = null;
+      let extractions = [];
+
+      // Comptes de test
+      const TEST_ACCOUNTS = {
+        receptionnaire: {
+          email: "reception.foncier@workflow.cm",
+          password: "ReceptionFoncier2024!",
+          nom: "Réceptionnaire (Niveau 1)",
+        },
+        controleur: {
+          email: "controle.technique@workflow.cm",
+          password: "ControleTech2024!",
+          nom: "Contrôleur (Niveau 2)",
+        },
+        validateur: {
+          email: "validation.principale@workflow.cm",
+          password: "ValidationPrincipale2024!",
+          nom: "Validateur (Niveau 3)",
+        },
+        admin: {
+          email: "admin.systeme@workflow.cm",
+          password: "AdminSysteme2024!",
+          nom: "Administrateur (Niveau 4)",
+        },
+      };
+
+      // Fonctions API
+      async function login(email, password) {
+        const response = await fetch(`${API_BASE_URL}/utilisateurs/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+            mot_de_passe: password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem("access_token", data.access_token);
+          localStorage.setItem("refresh_token", data.refresh_token);
+          localStorage.setItem("user", JSON.stringify(data.user));
+          return data;
+        } else {
+          throw new Error(data.error);
+        }
+      }
+
+      async function uploadExtraction(file, user) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("projet_id", user.projet_id.toString());
+        formData.append(
+          "localite",
+          JSON.stringify({
+            type: user.localite.type,
+            valeur: user.localite.valeur,
+          })
+        );
+
+        // IMPORTANT: Passer projet_id dans l'URL pour le middleware
+        const url = `${API_BASE_URL}/extractions/upload?projet_id=${user.projet_id}`;
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          return data;
+        } else {
+          throw new Error(data.error);
+        }
+      }
+
+      async function getExtractions() {
+        const response = await fetch(`${API_BASE_URL}/extractions`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        });
+
+        if (response.ok) {
+          return await response.json();
+        } else {
+          throw new Error("Erreur lors de la récupération des extractions");
+        }
+      }
+
+      async function validateExtraction(extractionId) {
+        const response = await fetch(
+          `${API_BASE_URL}/extractions/${extractionId}/valider`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              commentaire: "Validation depuis le frontend de démonstration",
+            }),
+          }
+        );
+
+        if (response.ok) {
+          return await response.json();
+        } else {
+          const data = await response.json();
+          throw new Error(data.error);
+        }
+      }
+
+      // Fonctions UI
+      function showMessage(message, type = "success") {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = type;
+        messageDiv.textContent = message;
+
+        const container = document.querySelector(".container");
+        container.insertBefore(messageDiv, container.firstChild);
+
+        setTimeout(() => {
+          messageDiv.remove();
+        }, 5000);
+      }
+
+      function renderLoginForm() {
+        return `
+                <div class="container">
+                    <div class="login-form">
+                        <h2>Connexion - BPM Extraction</h2>
+                        
+                        <div class="test-accounts">
+                            <h4>🧪 Comptes de test disponibles :</h4>
+                            ${Object.entries(TEST_ACCOUNTS)
+                              .map(
+                                ([key, account]) => `
+                                <button class="account-btn" onclick="quickLogin('${account.email}', '${account.password}')">
+                                    ${account.nom}
+                                </button>
+                            `
+                              )
+                              .join("")}
+                        </div>
+
+                        <form onsubmit="handleLogin(event)">
+                            <div class="form-group">
+                                <label for="email">Email :</label>
+                                <input type="email" id="email" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="password">Mot de passe :</label>
+                                <input type="password" id="password" required>
+                            </div>
+                            
+                            <button type="submit">Se connecter</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+      }
+
+      function renderDashboard() {
+        return `
+                <div class="header">
+                    <h1>🏢 BPM Extraction Dashboard</h1>
+                    <button onclick="logout()">Déconnexion</button>
+                </div>
+
+                <div class="container">
+                    <div class="user-info">
+                        <h3>👤 Informations Utilisateur</h3>
+                        <p><strong>Nom :</strong> ${currentUser.prenom} ${
+          currentUser.nom
+        }</p>
+                        <p><strong>Email :</strong> ${currentUser.email}</p>
+                        <p><strong>Rôle :</strong> ${
+                          currentUser.role.nom
+                        } (Niveau ${currentUser.niveau_hierarchique})</p>
+                        <p><strong>Projet :</strong> ${
+                          currentUser.projet_id
+                        }</p>
+                        <p><strong>Localité :</strong> ${
+                          currentUser.localite.valeur
+                        } (${currentUser.localite.type})</p>
+                        ${
+                          currentUser.etape_courante
+                            ? `<p><strong>Étape courante :</strong> ${currentUser.etape_courante.nom} (${currentUser.etape_courante.ordre})</p>`
+                            : ""
+                        }
+                    </div>
+                </div>
+
+                ${
+                  currentUser.niveau_hierarchique <= 2
+                    ? `
+                <div class="container">
+                    <h3>📤 Upload d'Extraction</h3>
+                    <form onsubmit="handleUpload(event)">
+                        <div class="form-group">
+                            <label for="file">Fichier (JPEG, PNG, WEBP, PDF - Max 10MB) :</label>
+                            <input type="file" id="file" accept=".jpg,.jpeg,.png,.webp,.pdf" required>
+                        </div>
+                        <button type="submit">Uploader l'extraction</button>
+                    </form>
+                </div>
+                `
+                    : ""
+                }
+
+                <div class="container">
+                    <h3>📋 Liste des Extractions</h3>
+                    <button onclick="loadExtractions()">🔄 Actualiser</button>
+                    <div id="extractions-list">
+                        <p>Cliquez sur "Actualiser" pour charger les extractions...</p>
+                    </div>
+                </div>
+            `;
+      }
+
+      function renderExtractionsList() {
+        if (extractions.length === 0) {
+          return "<p>Aucune extraction trouvée.</p>";
+        }
+
+        return extractions
+          .map(
+            (extraction) => `
+                <div class="extraction-card">
+                    <h4>📄 Extraction #${extraction.id}</h4>
+                    <p><strong>Fichier :</strong> ${extraction.fichier}</p>
+                    <p><strong>Statut :</strong> ${extraction.statut}</p>
+                    <p><strong>Confiance :</strong> ${
+                      extraction.seuil_confiance
+                    }%</p>
+                    <p><strong>Date :</strong> ${new Date(
+                      extraction.date_extraction
+                    ).toLocaleString()}</p>
+                    <p><strong>Utilisateur :</strong> ${
+                      extraction.utilisateur_id
+                    }</p>
+                    
+                    ${
+                      currentUser.niveau_hierarchique >= 1 &&
+                      extraction.statut === "Extrait"
+                        ? `
+                        <div class="actions">
+                            <button onclick="handleValidation(${extraction.id})">✅ Valider</button>
+                            <button onclick="handleRejection(${extraction.id})">❌ Rejeter</button>
+                        </div>
+                    `
+                        : ""
+                    }
+                </div>
+            `
+          )
+          .join("");
+      }
+
+      // Gestionnaires d'événements
+      function quickLogin(email, password) {
+        document.getElementById("email").value = email;
+        document.getElementById("password").value = password;
+      }
+
+      async function handleLogin(event) {
+        event.preventDefault();
+
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        try {
+          const loginData = await login(email, password);
+          currentUser = loginData.user;
+          render();
+          showMessage(
+            `Connexion réussie ! Bienvenue ${currentUser.prenom} ${currentUser.nom}`
+          );
+        } catch (error) {
+          showMessage(`Erreur de connexion: ${error.message}`, "error");
+        }
+      }
+
+      async function handleUpload(event) {
+        event.preventDefault();
+
+        const fileInput = document.getElementById("file");
+        const file = fileInput.files[0];
+
+        if (!file) {
+          showMessage("Veuillez sélectionner un fichier", "error");
+          return;
+        }
+
+        // Validation côté client
+        const allowedTypes = [
+          "image/jpeg",
+          "image/png",
+          "image/jpg",
+          "image/webp",
+          "application/pdf",
+        ];
+        const maxSize = 10 * 1024 * 1024; // 10 Mo
+
+        if (!allowedTypes.includes(file.type)) {
+          showMessage(
+            "Type de fichier non supporté. Utilisez: JPEG, PNG, JPG, WEBP ou PDF",
+            "error"
+          );
+          return;
+        }
+
+        if (file.size > maxSize) {
+          showMessage(
+            "Fichier trop volumineux. Taille maximum: 10 Mo",
+            "error"
+          );
+          return;
+        }
+
+        try {
+          const result = await uploadExtraction(file, currentUser);
+          showMessage(
+            `Upload réussi ! Extraction créée avec l'ID: ${result.id}`
+          );
+          fileInput.value = ""; // Reset du formulaire
+          loadExtractions(); // Recharger la liste
+        } catch (error) {
+          showMessage(`Erreur upload: ${error.message}`, "error");
+        }
+      }
+
+      async function loadExtractions() {
+        try {
+          extractions = await getExtractions();
+          document.getElementById("extractions-list").innerHTML =
+            renderExtractionsList();
+        } catch (error) {
+          showMessage(`Erreur lors du chargement: ${error.message}`, "error");
+        }
+      }
+
+      async function handleValidation(extractionId) {
+        try {
+          await validateExtraction(extractionId);
+          showMessage(`Extraction #${extractionId} validée avec succès !`);
+          loadExtractions(); // Recharger la liste
+        } catch (error) {
+          showMessage(
+            `Erreur lors de la validation: ${error.message}`,
+            "error"
+          );
+        }
+      }
+
+      function handleRejection(extractionId) {
+        showMessage(
+          "Fonction de rejet non implémentée dans cette démo",
+          "error"
+        );
+      }
+
+      function logout() {
+        localStorage.clear();
+        currentUser = null;
+        extractions = [];
+        render();
+        showMessage("Déconnexion réussie");
+      }
+
+      function render() {
+        const app = document.getElementById("app");
+
+        if (currentUser) {
+          app.innerHTML = renderDashboard();
+        } else {
+          app.innerHTML = renderLoginForm();
+        }
+      }
+
+      // Initialisation
+      function init() {
+        // Vérifier si l'utilisateur est déjà connecté
+        const savedUser = localStorage.getItem("user");
+        const token = localStorage.getItem("access_token");
+
+        if (savedUser && token) {
+          currentUser = JSON.parse(savedUser);
+        }
+
+        render();
+      }
+
+      // Démarrer l'application
+      init();
+    </script>
+  </body>
+</html>
