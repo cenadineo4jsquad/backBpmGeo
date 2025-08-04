@@ -41,6 +41,38 @@ export async function authenticate(
       }
     }
 
+    // Récupérer l'ordre de l'étape courante de l'utilisateur dans les projets
+    let etape_courante_ordre = null;
+    if (utilisateur.id) {
+      try {
+        const { rows: etapeRows } = await pool.query(
+          `
+          SELECT w.ordre, w.projet_id, w.etape_nom, ew.nom as nom_etape
+          FROM workflows w
+          LEFT JOIN etapes_workflow ew ON ew.projet_id = w.projet_id AND ew.ordre = w.ordre
+          WHERE w.utilisateur_id = $1
+          ORDER BY w.date_debut DESC
+          LIMIT 1
+        `,
+          [utilisateur.id]
+        );
+
+        if (etapeRows.length > 0) {
+          etape_courante_ordre = {
+            ordre: etapeRows[0].ordre,
+            projet_id: etapeRows[0].projet_id,
+            etape_nom: etapeRows[0].etape_nom || etapeRows[0].nom_etape,
+            nom_etape: etapeRows[0].nom_etape,
+          };
+        }
+      } catch (error) {
+        console.error(
+          "Erreur lors de la récupération de l'étape courante:",
+          error
+        );
+      }
+    }
+
     // Inclure les rôles pour que restrictToAdmin fonctionne
     (request as any).user = {
       id: utilisateur.id,
@@ -48,6 +80,7 @@ export async function authenticate(
       niveau_hierarchique: utilisateur.niveau_hierarchique,
       localites: utilisateur.localites,
       utilisateur_roles: utilisateur.utilisateur_roles || [],
+      etape_courante: etape_courante_ordre,
       // Informations d'accès géographique directement disponibles
       geographic_access: {
         can_access_all: canAccessAll,

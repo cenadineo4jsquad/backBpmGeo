@@ -48,6 +48,12 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
             email: string;
             niveau_hierarchique: string;
             localite: string;
+            etape_courante?: {
+              ordre: number;
+              projet_id: number;
+              etape_nom: string;
+              nom_etape: string;
+            } | null;
           }
         | undefined; // injecté par authenticate
       if (!user) return reply.code(401).send({ error: "Non autorisé" });
@@ -59,6 +65,7 @@ export default async function utilisateursRoutes(fastify: FastifyInstance) {
         email: user.email,
         niveau_hierarchique: user.niveau_hierarchique,
         localite: user.localite,
+        etape_courante: user.etape_courante || null,
       };
     }
   );
