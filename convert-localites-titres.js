@@ -37,9 +37,7 @@ async function convertLocalites() {
           "UPDATE titres_fonciers SET localite = $1 WHERE id = $2;",
           [JSON.stringify(obj), row.id]
         );
-        console.log(
-          `   ID ${row.id} : \"${loc}\" => ${JSON.stringify(obj)}`
-        );
+        console.log(`   ID ${row.id} : \"${loc}\" => ${JSON.stringify(obj)}`);
         count++;
       }
     }

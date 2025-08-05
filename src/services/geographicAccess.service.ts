@@ -24,7 +24,10 @@ export class GeographicAccessService {
       case 1: // Arrondissement - accès uniquement à son arrondissement
         return {
           whereClause: `WHERE (localite = $1 OR localite = $2 OR (localite::text LIKE '%"valeur":"' || $1 || '"%'))`,
-          params: [localiteValue, JSON.stringify({type: "arrondissement", valeur: localiteValue})],
+          params: [
+            localiteValue,
+            JSON.stringify({ type: "arrondissement", valeur: localiteValue }),
+          ],
         };
 
       case 2: // Département - accès à tous les arrondissements de son département
@@ -35,7 +38,10 @@ export class GeographicAccessService {
             JOIN departements d ON a.departement_id = d.id
             WHERE d.nom = $1
           ) OR localite = $1 OR localite = $2 OR (localite::text LIKE '%"valeur":"' || $1 || '"%')`,
-          params: [localiteValue, JSON.stringify({type: "departement", valeur: localiteValue})],
+          params: [
+            localiteValue,
+            JSON.stringify({ type: "departement", valeur: localiteValue }),
+          ],
         };
 
       case 3: // Région - accès à tous les départements et arrondissements de sa région
@@ -52,7 +58,10 @@ export class GeographicAccessService {
             JOIN regions r ON d.region_id = r.id
             WHERE r.nom = $1
           ) OR localite = $1 OR localite = $2 OR (localite::text LIKE '%"valeur":"' || $1 || '"%')`,
-          params: [localiteValue, JSON.stringify({type: "region", valeur: localiteValue})],
+          params: [
+            localiteValue,
+            JSON.stringify({ type: "region", valeur: localiteValue }),
+          ],
         };
 
       case 4: // Central - accès à tout

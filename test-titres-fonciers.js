@@ -189,9 +189,7 @@ async function testTitresFonciers() {
           console.log(
             `   ${index + 1}. ID ${titre.id} - ${titre.proprietaire}`
           );
-          console.log(
-            `      Localité: ${JSON.stringify(titre.localite)}`
-          );
+          console.log(`      Localité: ${JSON.stringify(titre.localite)}`);
         });
       } else {
         console.log("   Aucun titre trouvé");
@@ -199,7 +197,7 @@ async function testTitresFonciers() {
 
       // 7. Créer des titres fonciers avec l'admin pour "Mefou et Afamba"
       console.log("\n➕ 7. Création de titres avec admin pour test...");
-      
+
       const titreTestAdmin = {
         projet_id: 22,
         proprietaire: "TEST ADMIN - NDJOMO Paul",
@@ -231,8 +229,11 @@ async function testTitresFonciers() {
         );
 
         if (createAdminResponse.status === 201) {
-          console.log("   ✅ Titre créé par admin avec ID:", createAdminResponse.data.id);
-          
+          console.log(
+            "   ✅ Titre créé par admin avec ID:",
+            createAdminResponse.data.id
+          );
+
           // 8. Re-tester avec utilisateur niveau 2 après création admin
           console.log("\n🔄 8. Test niveau 2 après création admin...");
           const finalTestResponse = await axios.get(
@@ -243,7 +244,10 @@ async function testTitresFonciers() {
           );
 
           console.log("📊 Résultat final niveau 2:");
-          console.log("   Nombre de titres:", finalTestResponse.data.titres.length);
+          console.log(
+            "   Nombre de titres:",
+            finalTestResponse.data.titres.length
+          );
           console.log("   Access info:", finalTestResponse.data.access_info);
 
           if (finalTestResponse.data.titres.length > 0) {

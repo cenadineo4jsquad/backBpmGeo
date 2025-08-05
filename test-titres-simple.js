@@ -105,7 +105,6 @@ async function testSimple() {
     } else {
       console.log("❌ Aucun titre visible pour niveau 2");
     }
-
   } catch (error) {
     console.error("❌ Erreur:", {
       message: error.message,

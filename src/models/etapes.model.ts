@@ -1,27 +1,26 @@
-import { Model, DataTypes } from 'sequelize';
-import { sequelize } from '../config';
+import { PrismaClient } from "@prisma/client";
 
-class Etape extends Model {
+const prisma = new PrismaClient();
+
+export class EtapeModel {
   static async createEtape(data: any) {
-    return await Etape.create(data);
+    return await prisma.etapes_workflow.create({ data });
   }
 
   static async updateEtape(id: number, data: any) {
-    const etape = await Etape.findByPk(id);
+    const etape = await prisma.etapes_workflow.findUnique({ where: { id } });
     if (!etape) return null;
-    await etape.update(data);
-    return etape;
+    return await prisma.etapes_workflow.update({ where: { id }, data });
   }
 
   static async deleteEtape(id: number) {
-    const etape = await Etape.findByPk(id);
+    const etape = await prisma.etapes_workflow.findUnique({ where: { id } });
     if (!etape) return null;
-    await etape.destroy();
+    await prisma.etapes_workflow.delete({ where: { id } });
     return etape;
   }
 
   static async findByProjet(projet_id: number) {
-    return await Etape.findAll({ where: { projet_id } });
+    return await prisma.etapes_workflow.findMany({ where: { projet_id } });
   }
-import { Etape } from '@prisma/client';
-export type { Etape };
+}
