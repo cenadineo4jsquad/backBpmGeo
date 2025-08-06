@@ -215,10 +215,13 @@ class ExtractionController {
         });
 
         if (part.type === "file") {
-          // Lire le fichier en buffer
+          // C'est le fichier - on doit le convertir en Buffer
+          console.log(
+            "[DEBUG] uploadExtraction: Conversion du fichier en Buffer..."
+          );
+
           const chunks: Buffer[] = [];
-          // @ts-ignore: 'file' only exists on file parts
-          for await (const chunk of (part as any).file) {
+          for await (const chunk of part.file) {
             chunks.push(chunk);
           }
           const fileBuffer = Buffer.concat(chunks);
@@ -496,128 +499,43 @@ class ExtractionController {
     }
   }
 
-  public async submitToNextStage(
+  public submitToNextStage = async (
     request: FastifyRequest,
     reply: FastifyReply
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
+      console.log("[SUBMIT] Début submitToNextStage");
       const { workflow_id } = request.body as any;
       const user = request.user as { id?: number };
+
+      console.log("[SUBMIT] Données reçues:", {
+        workflow_id,
+        user_id: user.id,
+      });
+
       if (typeof user.id !== "number") {
+        console.log("[SUBMIT] Utilisateur non authentifié");
         reply.status(401).send({ error: "Utilisateur non authentifié" });
         return;
       }
+
+      console.log("[SUBMIT] Appel du service submitToNextStage...");
       const submissionResult = await this.extractionService.submitToNextStage(
         workflow_id,
         user.id
       );
+
+      console.log("[SUBMIT] Résultat du service:", submissionResult);
       reply.status(200).send(submissionResult);
-    } catch (error) {
-      reply
-        .status(500)
-        .send({ error: "Erreur lors de la soumission à l'étape suivante" });
-    }
-  }
-
-  // Méthode temporaire pour créer directement une extraction (pour tests)
-  public createExtractionDirect = async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
-    try {
-      const { projet_id, nom_fichier, taille_fichier, donnees_extraites } =
-        request.body as any;
-      const user = request.user as any;
-
-      if (!user || !user.id) {
-        return reply.status(401).send({ error: "Utilisateur non authentifié" });
-      }
-
-      if (!projet_id || !nom_fichier || !donnees_extraites) {
-        return reply.status(400).send({
-          error:
-            "Données manquantes: projet_id, nom_fichier et donnees_extraites requis",
-        });
-      }
-
-      const extractionData = {
-        projet_id: parseInt(projet_id),
-        utilisateur_id: user.id,
-        fichier: nom_fichier,
-        donnees_extraites,
-        seuil_confiance: 0.8,
-        statut: "en_attente",
-      };
-
-      const extraction = await this.extractionService.createExtraction(
-        extractionData
-      );
-
-      reply.status(201).send({
-        id: extraction.id,
-        message: "Extraction créée avec succès",
-        extraction,
+    } catch (error: any) {
+      console.error("[SUBMIT] Erreur détaillée:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
       });
-    } catch (error) {
-      console.error("Erreur création extraction directe:", error);
       reply.status(500).send({
-        error: "Erreur lors de la création de l'extraction",
-      });
-    }
-  };
-
-  // Méthode pour soumettre une extraction spécifique au niveau suivant
-  public submitExtractionToNextStage = async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
-    try {
-      const { id } = request.params as any;
-      const { commentaire, utilisateur_destination_id } = request.body as any;
-      const user = request.user as any;
-
-      if (!user || !user.id) {
-        return reply.status(401).send({ error: "Utilisateur non authentifié" });
-      }
-
-      // Pour le test, on va simuler la soumission au niveau suivant
-      // En récupérant l'extraction et en utilisant la logique existante
-
-      const extraction = await this.extractionService.getExtractionById(
-        parseInt(id)
-      );
-      if (!extraction) {
-        return reply.status(404).send({ error: "Extraction non trouvée" });
-      }
-
-      // Récupérer le workflow associé
-      if (typeof extraction.projet_id !== "number") {
-        return reply
-          .status(400)
-          .send({ error: "projet_id invalide pour cette extraction" });
-      }
-      const workflow = await this.extractionService.getWorkflowByProjetId(
-        extraction.projet_id
-      );
-      if (!workflow) {
-        return reply
-          .status(404)
-          .send({ error: "Workflow non trouvé pour ce projet" });
-      }
-
-      const submissionResult = await this.extractionService.submitToNextStage(
-        workflow.id,
-        user.id
-      );
-
-      reply.status(200).send({
-        message: "Extraction soumise au niveau suivant",
-        result: submissionResult,
-      });
-    } catch (error) {
-      console.error("Erreur soumission extraction:", error);
-      reply.status(500).send({
-        error: "Erreur lors de la soumission de l'extraction",
+        error: "Erreur lors de la soumission à l'étape suivante",
+        details: error.message,
       });
     }
   };

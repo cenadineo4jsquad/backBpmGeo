@@ -33,18 +33,6 @@ export default async function (fastify: FastifyInstance) {
     handler: extractionController.submitToNextStage,
   });
 
-  // Route pour soumettre une extraction spécifique (pour tests)
-  fastify.post("/api/extractions/:id/submit", {
-    preHandler: [authenticate],
-    handler: extractionController.submitExtractionToNextStage,
-  });
-
-  // Route temporaire pour créer directement une extraction (pour tests)
-  fastify.post("/api/extractions", {
-    preHandler: [authenticate],
-    handler: extractionController.createExtractionDirect,
-  });
-
   // Ajout des routes de validation et rejet d'extraction
   fastify.post("/api/extractions/:id/valider", {
     preHandler: [authenticate, rbac(2), validateTask],

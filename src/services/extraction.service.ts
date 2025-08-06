@@ -19,15 +19,6 @@ export interface ExtractionFilters {
 }
 
 export class ExtractionService {
-  /**
-   * Récupère le workflow associé à un projet donné
-   * @param projet_id ID du projet
-   */
-  async getWorkflowByProjetId(projet_id: number) {
-    return prisma.workflows.findFirst({
-      where: { projet_id },
-    });
-  }
   // private titreFoncierExtractionService: TitreFoncierExtractionService;
 
   constructor() {
@@ -212,30 +203,65 @@ export class ExtractionService {
 
   /* ----------------------- WORKFLOW ----------------------- */
   async submitToNextStage(workflowId: number, userId: number) {
-    const task = await prisma.workflows.findFirst({
-      where: { projet_id: workflowId, utilisateur_id: userId },
+    console.log(
+      `[WORKFLOW] Début submitToNextStage - workflowId: ${workflowId}, userId: ${userId}`
+    );
+
+    // Récupérer le workflow actuel de l'utilisateur
+    const currentWorkflow = await prisma.workflows.findFirst({
+      where: {
+        id: workflowId,
+        utilisateur_id: userId,
+        date_fin: null, // Workflow actif
+      },
     });
 
-    if (!task) throw new Error("Aucune tâche en attente");
+    if (!currentWorkflow) {
+      console.log(
+        `[WORKFLOW] Aucun workflow actif trouvé pour l'ID ${workflowId} et utilisateur ${userId}`
+      );
+      throw new Error("Aucun workflow actif trouvé");
+    }
+
+    console.log(`[WORKFLOW] Workflow actuel trouvé:`, {
+      id: currentWorkflow.id,
+      projet_id: currentWorkflow.projet_id,
+      ordre: currentWorkflow.ordre,
+      etape_nom: currentWorkflow.etape_nom,
+    });
 
     // Vérifier si le passage est vers le niveau 2 (ordre 1 -> 2)
-    const nextOrder = (task.ordre ?? 0) + 1;
+    const currentOrder = currentWorkflow.ordre ?? 1;
+    const nextOrder = currentOrder + 1;
+
+    console.log(
+      `[WORKFLOW] Passage de l'ordre ${currentOrder} vers ${nextOrder}`
+    );
 
     // Si passage au niveau 2, créer automatiquement le titre foncier
     if (nextOrder === 2) {
+      console.log(
+        `[WORKFLOW] Passage au niveau 2 détecté - création automatique du titre foncier`
+      );
+
       try {
-        // Trouver l'extraction liée au workflow
+        // Trouver l'extraction liée au projet et à l'utilisateur
         const extraction = await prisma.extractions.findFirst({
           where: {
-            projet_id: workflowId,
-            statut: { in: ["validee", "en_cours", "soumise"] },
+            projet_id: currentWorkflow.projet_id,
+            utilisateur_id: userId,
+            statut: { in: ["Extrait", "valide", "Corrigé"] }, // Statuts corrects
           },
           orderBy: { date_extraction: "desc" },
         });
 
+        console.log(
+          `[WORKFLOW] Recherche d'extraction pour projet ${currentWorkflow.projet_id} et utilisateur ${userId}`
+        );
+
         if (extraction && extraction.projet_id) {
           console.log(
-            `[WORKFLOW] Création automatique du titre foncier pour l'extraction ${extraction.id}`
+            `[WORKFLOW] Extraction trouvée: ${extraction.id} - Création automatique du titre foncier`
           );
 
           try {
@@ -262,53 +288,86 @@ export class ExtractionService {
                 where: { id: extraction.id },
                 data: { statut: "titre_cree" },
               });
+            } else {
+              console.log(
+                `[WARN] Impossible de créer le titre foncier - données insuffisantes`
+              );
             }
           } catch (error) {
             console.error(
               `[ERROR] Erreur lors de la création automatique du titre foncier:`,
               error
             );
+            // Continue le workflow même si la création du titre échoue
           }
         } else {
           console.log(
-            `[WARN] Aucune extraction trouvée pour le workflow ${workflowId}`
+            `[WARN] Aucune extraction trouvée pour le projet ${currentWorkflow.projet_id} et utilisateur ${userId}`
           );
         }
       } catch (error) {
         console.error(
-          `[ERROR] Erreur lors de la création automatique du titre foncier:`,
+          `[ERROR] Erreur lors de la recherche/création du titre foncier:`,
           error
         );
         // Continue le workflow même si la création du titre échoue
       }
     }
 
+    // Récupérer l'étape suivante du projet
+    const nextEtape = await prisma.etapes_workflow.findFirst({
+      where: {
+        projet_id: currentWorkflow.projet_id,
+        ordre: nextOrder,
+      },
+    });
+
+    if (!nextEtape) {
+      console.log(
+        `[WORKFLOW] Aucune étape suivante trouvée pour l'ordre ${nextOrder}`
+      );
+      throw new Error(
+        `Aucune étape suivante trouvée pour l'ordre ${nextOrder}`
+      );
+    }
+
+    console.log(
+      `[WORKFLOW] Étape suivante trouvée: ${nextEtape.nom} (ordre: ${nextEtape.ordre})`
+    );
+
+    // Transaction pour terminer le workflow actuel et créer le suivant
     await prisma.$transaction([
-      prisma.workflows.create({
+      // Terminer le workflow actuel
+      prisma.workflows.update({
+        where: { id: currentWorkflow.id },
         data: {
-          projet_id: workflowId, // correspond au champ du modèle
-          ordre: nextOrder,
-          utilisateur_id: userId,
-          etape_nom:
-            nextOrder === 2 ? "Validation Niveau 2" : `Étape ${nextOrder}`,
-          // statut retiré car non présent dans le modèle
+          date_fin: new Date(),
         },
       }),
-      prisma.workflows.update({
-        where: { id: task.id },
+      // Créer le nouveau workflow pour l'étape suivante
+      prisma.workflows.create({
         data: {
-          date_fin: new Date(), // Marquer l'étape précédente comme terminée
-        }, // statut retiré car non présent dans le modèle
+          projet_id: currentWorkflow.projet_id,
+          ordre: nextOrder,
+          utilisateur_id: userId,
+          etape_nom: nextEtape.nom,
+          date_debut: new Date(),
+        },
       }),
     ]);
+
+    console.log(
+      `[WORKFLOW] Transition réussie vers l'étape "${nextEtape.nom}"`
+    );
 
     return {
       success: true,
       message:
         nextOrder === 2
           ? "Extraction soumise au niveau 2 avec création automatique du titre foncier"
-          : `Extraction soumise à l'étape ${nextOrder}`,
+          : `Extraction soumise à l'étape "${nextEtape.nom}"`,
       next_order: nextOrder,
+      next_etape: nextEtape.nom,
     };
   }
 }

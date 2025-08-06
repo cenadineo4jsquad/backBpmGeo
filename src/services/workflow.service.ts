@@ -5,7 +5,7 @@ const pool = new Pool({
   user: process.env.DB_USER || "postgres",
   host: process.env.DB_HOST || "localhost",
   database: process.env.DB_NAME || "geobpm",
-  password: process.env.DB_PASSWORD || "password",
+  password: process.env.DB_PASSWORD || "",
   port: parseInt(process.env.DB_PORT ?? "5432", 10),
 });
 
@@ -58,13 +58,52 @@ export async function createWorkflow(
   projet_id: number,
   titre_foncier_id: number
 ) {
-  // Logique à compléter
-  return { id: 1, projet_id, titre_foncier_id, status: "créé" };
+  try {
+    // Créer un nouveau workflow pour un titre foncier
+    const workflow = await prisma.workflows.create({
+      data: {
+        projet_id: projet_id,
+        titre_foncier_id: titre_foncier_id,
+        etape_nom: "Étape initiale",
+        ordre: 1,
+        date_debut: new Date(),
+      },
+    });
+
+    console.log(
+      `[WORKFLOW] Workflow créé avec ID: ${workflow.id} pour le titre foncier ${titre_foncier_id}`
+    );
+    return { id: workflow.id, projet_id, titre_foncier_id, status: "créé" };
+  } catch (error) {
+    console.error("[WORKFLOW] Erreur lors de la création du workflow:", error);
+    throw error;
+  }
 }
 
 export async function submitToNextStage(workflow_id: number) {
-  // Logique à compléter
-  return { workflow_id, status: "étape suivante soumise" };
+  try {
+    // Utiliser la fonction progressToNextStage existante
+    const currentWorkflow = await prisma.workflows.findUnique({
+      where: { id: workflow_id },
+    });
+
+    if (!currentWorkflow || !currentWorkflow.utilisateur_id) {
+      throw new Error("Workflow non trouvé ou utilisateur manquant");
+    }
+
+    const result = await progressToNextStage(
+      currentWorkflow.utilisateur_id,
+      currentWorkflow.projet_id || 0
+    );
+
+    return { workflow_id, status: "étape suivante soumise", result };
+  } catch (error) {
+    console.error(
+      "[WORKFLOW] Erreur lors de la soumission à l'étape suivante:",
+      error
+    );
+    throw error;
+  }
 }
 
 export async function validateTask(

@@ -297,14 +297,7 @@ export const createUserHandler = async (
   }
 
   const hashedPassword = await hash(mot_de_passe, 10);
-  const niveau_hierarchique =
-    localite?.type === "arrondissement"
-      ? 1
-      : localite?.type === "departement"
-      ? 2
-      : est_superviseur
-      ? 4
-      : 3;
+
   try {
     // Validation stricte de la localité si fournie
     let localiteObj = localite;
@@ -324,6 +317,16 @@ export const createUserHandler = async (
       // On force l'objet localite à l'objet complet trouvé
       localiteObj = { id: found.id, type: found.type, valeur: found.valeur };
     }
+
+    // Calcul du niveau_hierarchique APRÈS récupération des données complètes de la localité
+    const niveau_hierarchique =
+      localiteObj?.type === "arrondissement"
+        ? 1
+        : localiteObj?.type === "departement"
+        ? 2
+        : est_superviseur
+        ? 4
+        : 3;
     // Créer l'utilisateur et son association avec le rôle
     const utilisateur = await prisma.$transaction(async (prisma) => {
       const newUser = await prisma.utilisateurs.create({
@@ -384,7 +387,10 @@ export const createUserHandler = async (
     if (error.code === "23505") {
       reply.status(400).send({ error: "Email déjà utilisé" });
     } else {
-      reply.status(500).send({ error: "Erreur serveur" });
+      reply.status(500).send({
+        message: error.message,
+        stack: error.stack,
+      });
     }
   }
 };
@@ -443,22 +449,45 @@ export const updateUserHandler = async (
   }
   // Recalcul du niveau_hierarchique si localite change
   let niveau_hierarchique: number | undefined = undefined;
+  let localiteObj = localite;
+
   if (localite) {
+    // Validation stricte de la localité si fournie - récupérer les données complètes
+    const found = await prisma.localites.findFirst({
+      where:
+        typeof localite === "string"
+          ? { valeur: localite }
+          : localite.valeur
+          ? { valeur: localite.valeur }
+          : localite.id
+          ? { id: localite.id }
+          : undefined,
+    });
+
+    if (!found) {
+      return reply.status(400).send({ error: "Localité inconnue" });
+    }
+
+    // Utiliser les données complètes de la localité
+    localiteObj = { id: found.id, type: found.type, valeur: found.valeur };
+
+    // Calculer le niveau_hierarchique avec les vraies données de la localité
     niveau_hierarchique =
-      localite.type === "arrondissement"
+      localiteObj.type === "arrondissement"
         ? 1
-        : localite.type === "departement"
+        : localiteObj.type === "departement"
         ? 2
         : est_superviseur
         ? 4
         : 3;
   }
+
   try {
     const utilisateur = await utilisateurService.updateUserWithLocalite(id, {
       nom,
       prenom,
       email,
-      localite,
+      localite: localiteObj,
       est_superviseur,
       ...(niveau_hierarchique !== undefined ? { niveau_hierarchique } : {}),
     });

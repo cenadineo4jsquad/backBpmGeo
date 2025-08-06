@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { PrismaClient } from "@prisma/client";
+import { initializeProjectWorkflow } from "../services/workflowInitialization.service";
 const prisma = new PrismaClient();
 
 export const createEtape = async (
@@ -23,7 +24,9 @@ export const createEtape = async (
         id: Number(projet_id),
       },
       include: {
-        etapes_workflow: true,
+        etapes_workflow: {
+          orderBy: { ordre: "asc" },
+        },
       },
     });
 
@@ -32,7 +35,7 @@ export const createEtape = async (
     }
 
     // Vérifier le nombre maximum d'étapes (pour éviter un trop grand nombre d'étapes)
-    const MAX_ETAPES = 10; // Limite arbitraire, à ajuster selon les besoins
+    const MAX_ETAPES = 10;
     if (projet.etapes_workflow.length >= MAX_ETAPES) {
       return reply.status(400).send({
         error: `Le projet ne peut pas avoir plus de ${MAX_ETAPES} étapes`,
@@ -76,29 +79,17 @@ export const createEtape = async (
       },
     });
 
-    // Créer automatiquement un workflow template pour cette étape
-    // Ce workflow servira de modèle et peut être assigné aux utilisateurs plus tard
+    // Créer ou mettre à jour le workflow complet pour le projet
     try {
-      await prisma.workflows.create({
-        data: {
-          projet_id: Number(projet_id),
-          etape_nom: nom,
-          ordre: Number(ordre),
-          // utilisateur_id est null car c'est un workflow template
-          utilisateur_id: null,
-          date_debut: null, // Sera défini quand assigné à un utilisateur
-        },
-      });
-
+      await initializeProjectWorkflow(Number(projet_id));
       console.log(
-        `[CREATE_ETAPE] Workflow template créé pour l'étape "${nom}" (ordre: ${ordre})`
+        `[CREATE_ETAPE] Workflow initialisé pour le projet ${projet_id}`
       );
     } catch (workflowError) {
       console.warn(
-        `[CREATE_ETAPE] Impossible de créer le workflow template pour l'étape "${nom}":`,
+        `[CREATE_ETAPE] Erreur lors de l'initialisation du workflow:`,
         workflowError
       );
-      // On ne fait pas échouer la création de l'étape si le workflow template échoue
     }
 
     reply.status(201).send(newEtape);

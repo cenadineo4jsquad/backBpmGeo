@@ -1,3 +1,4 @@
+// Modèle pour les étapes utilisant Prisma
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -8,19 +9,52 @@ export class EtapeModel {
   }
 
   static async updateEtape(id: number, data: any) {
-    const etape = await prisma.etapes_workflow.findUnique({ where: { id } });
-    if (!etape) return null;
-    return await prisma.etapes_workflow.update({ where: { id }, data });
+    try {
+      return await prisma.etapes_workflow.update({
+        where: { id },
+        data,
+      });
+    } catch (error) {
+      return null;
+    }
   }
 
   static async deleteEtape(id: number) {
-    const etape = await prisma.etapes_workflow.findUnique({ where: { id } });
-    if (!etape) return null;
-    await prisma.etapes_workflow.delete({ where: { id } });
-    return etape;
+    try {
+      return await prisma.etapes_workflow.delete({
+        where: { id },
+      });
+    } catch (error) {
+      return null;
+    }
   }
 
   static async findByProjet(projet_id: number) {
-    return await prisma.etapes_workflow.findMany({ where: { projet_id } });
+    return await prisma.etapes_workflow.findMany({
+      where: { projet_id },
+      orderBy: { ordre: "asc" },
+    });
+  }
+
+  static async findById(id: number) {
+    return await prisma.etapes_workflow.findUnique({
+      where: { id },
+    });
+  }
+
+  static async findAll() {
+    return await prisma.etapes_workflow.findMany({
+      orderBy: { ordre: "asc" },
+    });
   }
 }
+
+// Export du type Prisma pour les étapes
+export type Etape = {
+  id: number;
+  projet_id: number | null;
+  nom: string;
+  ordre: number;
+  description: string | null;
+  type_validation: string | null;
+};
