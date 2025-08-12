@@ -216,6 +216,10 @@ export class ExtractionService {
       },
     });
 
+    // Calcul de l'ordre suivant (après récupération du workflow)
+    const currentOrder = currentWorkflow?.ordre ?? 1;
+    const nextOrder = currentOrder + 1;
+
     if (!currentWorkflow) {
       console.log(
         `[WORKFLOW] Aucun workflow actif trouvé pour l'ID ${workflowId} et utilisateur ${userId}`
@@ -230,88 +234,51 @@ export class ExtractionService {
       etape_nom: currentWorkflow.etape_nom,
     });
 
-    // Vérifier si le passage est vers le niveau 2 (ordre 1 -> 2)
-    const currentOrder = currentWorkflow.ordre ?? 1;
-    const nextOrder = currentOrder + 1;
-
-    console.log(
-      `[WORKFLOW] Passage de l'ordre ${currentOrder} vers ${nextOrder}`
-    );
-
-    // Si passage au niveau 2, créer automatiquement le titre foncier
-    if (nextOrder === 2) {
-      console.log(
-        `[WORKFLOW] Passage au niveau 2 détecté - création automatique du titre foncier`
-      );
-
-      try {
-        // Trouver l'extraction liée au projet et à l'utilisateur
-        const extraction = await prisma.extractions.findFirst({
-          where: {
-            projet_id: currentWorkflow.projet_id,
-            utilisateur_id: userId,
-            statut: { in: ["Extrait", "valide", "Corrigé"] }, // Statuts corrects
-          },
-          orderBy: { date_extraction: "desc" },
-        });
-
-        console.log(
-          `[WORKFLOW] Recherche d'extraction pour projet ${currentWorkflow.projet_id} et utilisateur ${userId}`
-        );
-
-        if (extraction && extraction.projet_id) {
-          console.log(
-            `[WORKFLOW] Extraction trouvée: ${extraction.id} - Création automatique du titre foncier`
+    // À chaque submit, tenter de créer le titre foncier à partir de l'extraction la plus récente et validée
+    let titreFoncierCree = null;
+    try {
+      const extraction = await prisma.extractions.findFirst({
+        where: {
+          projet_id: currentWorkflow.projet_id,
+          utilisateur_id: userId,
+          statut: { in: ["Extrait", "valide", "Corrigé"] },
+        },
+        orderBy: { date_extraction: "desc" },
+      });
+      if (extraction && extraction.projet_id) {
+        const extractionDto = {
+          id: extraction.id,
+          projet_id: extraction.projet_id,
+          donnees_extraites: extraction.donnees_extraites,
+        };
+        titreFoncierCree =
+          await titreFoncierExtractionService.createTitreFromExtraction(
+            extractionDto,
+            userId
           );
-
-          try {
-            // Créer le titre foncier depuis l'extraction
-            const extractionDto = {
-              id: extraction.id,
-              projet_id: extraction.projet_id,
-              donnees_extraites: extraction.donnees_extraites,
-            };
-
-            const titreCreated =
-              await titreFoncierExtractionService.createTitreFromExtraction(
-                extractionDto,
-                userId
-              );
-
-            if (titreCreated) {
-              console.log(
-                `[SUCCESS] Titre foncier ${titreCreated.id} créé automatiquement lors du passage au niveau 2`
-              );
-
-              // Mettre à jour le statut de l'extraction
-              await prisma.extractions.update({
-                where: { id: extraction.id },
-                data: { statut: "titre_cree" },
-              });
-            } else {
-              console.log(
-                `[WARN] Impossible de créer le titre foncier - données insuffisantes`
-              );
-            }
-          } catch (error) {
-            console.error(
-              `[ERROR] Erreur lors de la création automatique du titre foncier:`,
-              error
-            );
-            // Continue le workflow même si la création du titre échoue
-          }
+        if (titreFoncierCree && titreFoncierCree.id) {
+          await prisma.extractions.update({
+            where: { id: extraction.id },
+            data: { statut: "titre_cree" },
+          });
+          console.log(
+            `[SUCCESS] Titre foncier ${titreFoncierCree.id} créé lors du submit.`
+          );
         } else {
           console.log(
-            `[WARN] Aucune extraction trouvée pour le projet ${currentWorkflow.projet_id} et utilisateur ${userId}`
+            `[WARN] Impossible de créer le titre foncier - données insuffisantes`
           );
         }
-      } catch (error) {
-        console.error(
-          `[ERROR] Erreur lors de la recherche/création du titre foncier:`,
-          error
+      } else {
+        console.log(
+          `[WARN] Aucune extraction trouvée pour le projet ${currentWorkflow.projet_id} et utilisateur ${userId}`
         );
-        // Continue le workflow même si la création du titre échoue
       }
+    } catch (error) {
+      console.error(
+        `[ERROR] Erreur lors de la création du titre foncier au submit:`,
+        error
+      );
     }
 
     // Récupérer l'étape suivante du projet
@@ -336,6 +303,7 @@ export class ExtractionService {
     );
 
     // Transaction pour terminer le workflow actuel et créer le suivant
+    // Si un titre foncier a été créé, lier son id au nouveau workflow
     await prisma.$transaction([
       // Terminer le workflow actuel
       prisma.workflows.update({
@@ -352,6 +320,10 @@ export class ExtractionService {
           utilisateur_id: userId,
           etape_nom: nextEtape.nom,
           date_debut: new Date(),
+          titre_foncier_id:
+            titreFoncierCree && titreFoncierCree.id
+              ? titreFoncierCree.id
+              : undefined,
         },
       }),
     ]);

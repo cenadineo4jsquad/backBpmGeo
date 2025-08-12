@@ -107,21 +107,36 @@ class ExtractionController {
         });
       }
 
-      // Format strict de la réponse
-      const formatted = rows.map((row: any) => ({
-        id: row.id,
-        projet_id: row.projet_id,
-        utilisateur_id: row.utilisateur_id,
-        fichier: row.fichier,
-        donnees_extraites: row.donnees_extraites,
-        seuil_confiance: row.seuil_confiance,
-        statut: row.statut,
-        date_extraction:
-          row.date_extraction instanceof Date
-            ? row.date_extraction.toISOString()
-            : row.date_extraction,
-        // titre_foncier_id retiré car non présent dans le type
-      }));
+      // Ajout de l'id du workflow associé à chaque extraction
+      const prisma = require("../lib/prisma").prisma;
+      const formatted = await Promise.all(
+        rows.map(async (row: any) => {
+          // Recherche du workflow associé (par projet, utilisateur, et éventuellement ordre si disponible)
+          const workflow = await prisma.workflows.findFirst({
+            where: {
+              projet_id: row.projet_id,
+              utilisateur_id: row.utilisateur_id,
+              // Optionnel: on pourrait filtrer par ordre ou etape_nom si besoin
+            },
+            orderBy: { date_debut: "desc" },
+          });
+          return {
+            id: row.id,
+            projet_id: row.projet_id,
+            utilisateur_id: row.utilisateur_id,
+            fichier: row.fichier,
+            donnees_extraites: row.donnees_extraites,
+            seuil_confiance: row.seuil_confiance,
+            statut: row.statut,
+            date_extraction:
+              row.date_extraction instanceof Date
+                ? row.date_extraction.toISOString()
+                : row.date_extraction,
+            workflow_id: workflow ? workflow.id : null,
+            // titre_foncier_id retiré car non présent dans le type
+          };
+        })
+      );
       reply.send(formatted);
     } catch (error) {
       reply

@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { hash, compare } from "bcrypt";
 import * as utilisateurService from "../services/utilisateurs.service";
 import * as workflowService from "../services/workflow.service";
+import { initializeProjectWorkflow } from "../services/workflowInitialization.service";
 import { prisma } from "../lib/prisma";
 
 export const loginHandler = async (
@@ -351,26 +352,19 @@ export const createUserHandler = async (
       return newUser;
     });
 
-    // Assigner automatiquement un workflow si le rôle est lié à un projet
+    // Initialiser ou mettre à jour les workflows pour tous les utilisateurs du projet
     if (roleToUse.projet_id) {
       try {
-        const workflow = await workflowService.assignWorkflowToUser(
-          utilisateur.id,
-          roleToUse.projet_id,
-          roleToUse.niveau_hierarchique || undefined
+        await initializeProjectWorkflow(roleToUse.projet_id);
+        console.log(
+          `[CREATE_USER] Workflows du projet ${roleToUse.projet_id} initialisés pour tous les utilisateurs après ajout de l'utilisateur ${utilisateur.id}`
         );
-
-        if (workflow) {
-          console.log(
-            `[CREATE_USER] Workflow automatiquement assigné à l'utilisateur ${utilisateur.id} pour le projet ${roleToUse.projet_id}`
-          );
-        }
       } catch (workflowError) {
         console.warn(
-          `[CREATE_USER] Impossible d'assigner automatiquement un workflow à l'utilisateur ${utilisateur.id}:`,
+          `[CREATE_USER] Erreur lors de l'initialisation des workflows du projet ${roleToUse.projet_id} après ajout de l'utilisateur ${utilisateur.id}:`,
           workflowError
         );
-        // On ne fait pas échouer la création de l'utilisateur si l'assignation du workflow échoue
+        // On ne fait pas échouer la création de l'utilisateur si l'initialisation du workflow échoue
       }
     }
 
