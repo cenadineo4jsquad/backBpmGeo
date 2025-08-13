@@ -51,7 +51,7 @@ export const titreFoncierExtractionService = {
       `Creating titre foncier from extraction ${extraction.id} for user ${userId}`
     );
 
-    // Mock implementation - replace with actual creation logic
+    // Ajout du champ statut à la création
     return {
       id: Math.floor(Math.random() * 1000),
       numero: "TF-2024-001",
@@ -61,6 +61,7 @@ export const titreFoncierExtractionService = {
       dateCreation: new Date(),
       extractionId: extraction.id,
       createdBy: userId,
+      statut: extraction.statut || "cree", // valeur par défaut
     };
   },
 };

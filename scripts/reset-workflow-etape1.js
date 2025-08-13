@@ -1,12 +1,9 @@
-// Script pour réinitialiser le workflow à l'étape 1 pour l'utilisateur Alice (id: 62) sur le projet 29
-// Place ce fichier dans scripts/reset-workflow-etape1.js et exécute : node scripts/reset-workflow-etape1.js
-
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function resetWorkflowToStep1() {
-  const utilisateur_id = 62; // Alice
-  const projet_id = 29;
+  const utilisateur_id = 68; // Ton utilisateur
+  const projet_id = 32; // Ton projet
   const ordre_etape_1 = 1;
   const now = new Date();
 
