@@ -52,5 +52,10 @@
     "data management"
   ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testTimeout": 30000
+  }
 }
