@@ -1,5 +1,8 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { getWorkflows, createWorkflow, submitToNextStage, validateTask } from "../services/workflow.service";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 export const getWorkflowsHandler = async (
   request: FastifyRequest,
   reply: FastifyReply
@@ -49,7 +52,27 @@ export const submitToNextStageHandler = async (
 ) => {
   try {
     const { workflow_id } = request.body as any;
-    const result = await submitToNextStage(workflow_id);
+    const user = request.user as any;
+
+    const currentWorkflow = await prisma.workflows.findUnique({
+      where: { id: workflow_id },
+    });
+
+    if (!currentWorkflow) {
+      return reply.status(404).send({ error: "Workflow non trouvé" });
+    }
+
+    if (!currentWorkflow.titre_foncier_id || !currentWorkflow.projet_id) {
+      return reply
+        .status(400)
+        .send({ error: "Le workflow n'est pas lié à un titre foncier ou à un projet" });
+    }
+
+    const result = await submitToNextStage(
+      currentWorkflow.titre_foncier_id,
+      currentWorkflow.projet_id,
+      user.id
+    );
     reply.send(result);
   } catch (error) {
     reply
