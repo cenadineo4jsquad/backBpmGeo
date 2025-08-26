@@ -42,7 +42,6 @@ model extractions {
   utilisateurs       utilisateurs?        @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
   titres_extractions titres_extractions[]
   validations        validations[]
-  workflows          workflows[]
 
   @@index([date_extraction], map: "idx_extractions_date")
   @@index([statut], map: "idx_extractions_statut")
@@ -83,14 +82,14 @@ model projets {
 }
 
 model roles {
-  id                Int           @id @default(autoincrement())
-  projet_id         Int?
-  nom               String        @unique @db.VarChar(50)
+  id                  Int                 @id @default(autoincrement())
+  projet_id           Int?
+  nom                 String              @unique @db.VarChar(50)
   niveau_hierarchique Int?
-  description       String?
-  permissions       permissions[] // <--- Relation 1-N
-  utilisateur_roles utilisateur_roles[]
-  projets           projets?      @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  description         String?
+  permissions         permissions[] // <--- Relation 1-N
+  utilisateur_roles   utilisateur_roles[]
+  projets             projets?            @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model titres_extractions {
@@ -116,6 +115,7 @@ model titres_fonciers {
   localite           String?
   titres_extractions titres_extractions[]
   projets            projets?             @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  workflows          workflows[]
 
   @@index([projet_id], map: "idx_titres_projet")
 }
@@ -160,15 +160,16 @@ model validations {
 }
 
 model workflows {
-  id               Int           @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   titre_foncier_id Int?
   projet_id        Int?
-  etape_nom        String?       @db.VarChar(100)
+  etape_nom        String?          @db.VarChar(100)
   ordre            Int?
   utilisateur_id   Int?
-  date_debut       DateTime?     @default(now()) @db.Timestamp(6)
-  date_fin         DateTime?     @db.Timestamp(6)
-  projets          projets?      @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  extractions      extractions?  @relation(fields: [titre_foncier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  utilisateurs     utilisateurs? @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
+  date_debut       DateTime?        @default(now()) @db.Timestamp(6)
+  date_fin         DateTime?        @db.Timestamp(6)
+  projets          projets?         @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titres_fonciers  titres_fonciers? @relation(fields: [titre_foncier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  utilisateurs     utilisateurs?    @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
+  
 }

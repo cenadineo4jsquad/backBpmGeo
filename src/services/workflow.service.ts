@@ -59,6 +59,27 @@ export async function createWorkflow(
   titre_foncier_id: number
 ) {
   try {
+    // Vérifier si un workflow existe déjà pour ce titre sur ce projet
+    const existingWorkflow = await prisma.workflows.findFirst({
+      where: {
+        projet_id: projet_id,
+        titre_foncier_id: titre_foncier_id,
+      },
+    });
+
+    if (existingWorkflow) {
+      // Si un workflow existe déjà, le retourner au lieu d'en créer un nouveau
+      console.log(
+        `[WORKFLOW] Un workflow existe déjà (ID: ${existingWorkflow.id}) pour le titre foncier ${titre_foncier_id}. Pas de duplication.`
+      );
+      return {
+        id: existingWorkflow.id,
+        projet_id,
+        titre_foncier_id,
+        status: "existant",
+      };
+    }
+
     // Créer un nouveau workflow pour un titre foncier
     const workflow = await prisma.workflows.create({
       data: {

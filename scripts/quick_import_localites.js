@@ -73,6 +73,10 @@ async function quickImportLocalites() {
     console.log(`   • Départements: ${stats.departement}`);
     console.log(`   • Arrondissements: ${stats.arrondissement}`);
 
+    // Ajout manuel de la localité MINCAF
+    localitesMap.set('administration_centrale:MINCAF', { type: 'administration_centrale', valeur: 'MINCAF' });
+    console.log('   • Administration Centrale: 1 (MINCAF ajouté manuellement)');
+
     // Importer dans la base de données
     console.log("\n💾 Importation en base de données...");
 

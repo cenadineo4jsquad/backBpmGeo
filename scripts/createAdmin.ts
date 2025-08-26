@@ -29,12 +29,29 @@ async function createAdmin() {
   ];
 
   try {
-    // 1. Création de l'utilisateur admin
-    const { rows } = await pool.query(query, values);
-    const adminId = rows[0].id;
-    console.log("Admin créé avec l'id :", adminId);
+    // 1. Création de l'utilisateur admin (s'il n'existe pas)
+    const queryInsertUser = `
+      INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, niveau_hierarchique, localite_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (email) DO NOTHING
+    `;
+    await pool.query(queryInsertUser, values);
 
-    // 2. Récupération de l'id du rôle admin
+    // Récupération de l'ID de l'admin (existant ou nouveau)
+    const { rows } = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
+    if (!rows.length) throw new Error('Impossible de créer ou de trouver l\'utilisateur admin.');
+    const adminId = rows[0].id;
+    console.log("ID de l'utilisateur Admin:", adminId);
+
+    // 2. Création du rôle admin s'il n'existe pas
+    const queryCreateRole = `
+      INSERT INTO roles (nom, niveau_hierarchique, description)
+      VALUES ('admin', 4, 'Rôle administrateur système')
+      ON CONFLICT (nom) DO NOTHING;
+    `;
+    await pool.query(queryCreateRole);
+
+    // 3. Récupération de l'id du rôle admin
     const queryRole = `SELECT id FROM roles WHERE nom = 'admin' LIMIT 1`;
     const { rows: roleRows } = await pool.query(queryRole);
     if (!roleRows.length)
