@@ -1,3 +1,4 @@
+import { prisma } from "../../../lib/prisma";
 import { ExtractionResult } from "../types";
 
 export interface TitreFoncierExtractionData {
@@ -46,12 +47,11 @@ export const titreFoncierExtractionService = {
   },
 
   async createTitreFromExtraction(extraction: any, userId: number) {
-    // Implementation for creating titre foncier from extraction data
     console.log(
       `Creating titre foncier from extraction ${extraction.id} for user ${userId}`
     );
 
-    // Ajout du champ statut à la création
+    // Mock implementation - replace with actual creation logic
     return {
       id: Math.floor(Math.random() * 1000),
       numero: "TF-2024-001",
@@ -61,7 +61,6 @@ export const titreFoncierExtractionService = {
       dateCreation: new Date(),
       extractionId: extraction.id,
       createdBy: userId,
-      statut: extraction.statut || "cree", // valeur par défaut
     };
   },
 };

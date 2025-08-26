@@ -80,23 +80,19 @@ export async function createWorkflow(
   }
 }
 
-export async function submitToNextStage(workflow_id: number) {
+export async function submitToNextStage(
+  titre_foncier_id: number,
+  projet_id: number,
+  utilisateur_id: number
+) {
   try {
-    // Utiliser la fonction progressToNextStage existante
-    const currentWorkflow = await prisma.workflows.findUnique({
-      where: { id: workflow_id },
-    });
-
-    if (!currentWorkflow || !currentWorkflow.utilisateur_id) {
-      throw new Error("Workflow non trouvé ou utilisateur manquant");
-    }
-
     const result = await progressToNextStage(
-      currentWorkflow.utilisateur_id,
-      currentWorkflow.projet_id || 0
+      titre_foncier_id,
+      projet_id,
+      utilisateur_id
     );
 
-    return { workflow_id, status: "étape suivante soumise", result };
+    return { titre_foncier_id, status: "étape suivante soumise", result };
   } catch (error) {
     console.error(
       "[WORKFLOW] Erreur lors de la soumission à l'étape suivante:",
@@ -117,106 +113,22 @@ export async function validateTask(
 }
 
 /**
- * Assigne automatiquement un workflow à un utilisateur basé sur son rôle et le projet
- * @param utilisateur_id - ID de l'utilisateur
+ * Met à jour le workflow d'un titre foncier vers l'étape suivante
+ * @param titre_foncier_id - ID du titre foncier
  * @param projet_id - ID du projet
- * @param role_niveau_hierarchique - Niveau hiérarchique du rôle de l'utilisateur
- * @returns Le workflow assigné ou null si aucune étape appropriée
- */
-export async function assignWorkflowToUser(
-  utilisateur_id: number,
-  projet_id: number,
-  role_niveau_hierarchique?: number
-) {
-  try {
-    // Récupérer les étapes du projet, triées par ordre
-    const etapes = await prisma.etapes_workflow.findMany({
-      where: {
-        projet_id: projet_id,
-      },
-      orderBy: {
-        ordre: "asc",
-      },
-    });
-
-    if (etapes.length === 0) {
-      console.log(
-        `[WORKFLOW] Aucune étape trouvée pour le projet ${projet_id}`
-      );
-      return null;
-    }
-
-    // Déterminer quelle étape assigner en fonction du niveau hiérarchique
-    let etapeToAssign;
-
-    if (role_niveau_hierarchique) {
-      // Stratégie : assigner l'étape correspondant au niveau hiérarchique
-      // Niveau 1 -> Première étape, Niveau 2 -> Deuxième étape, etc.
-      const etapeIndex = Math.min(
-        role_niveau_hierarchique - 1,
-        etapes.length - 1
-      );
-      etapeToAssign = etapes[etapeIndex];
-    } else {
-      // Par défaut, assigner la première étape
-      etapeToAssign = etapes[0];
-    }
-
-    // Vérifier si l'utilisateur a déjà un workflow actif pour ce projet
-    const existingWorkflow = await prisma.workflows.findFirst({
-      where: {
-        utilisateur_id: utilisateur_id,
-        projet_id: projet_id,
-        date_fin: null, // Workflow actif (non terminé)
-      },
-    });
-
-    if (existingWorkflow) {
-      console.log(
-        `[WORKFLOW] L'utilisateur ${utilisateur_id} a déjà un workflow actif pour le projet ${projet_id}`
-      );
-      return existingWorkflow;
-    }
-
-    // Créer le nouveau workflow
-    const newWorkflow = await prisma.workflows.create({
-      data: {
-        utilisateur_id: utilisateur_id,
-        projet_id: projet_id,
-        etape_nom: etapeToAssign.nom,
-        ordre: etapeToAssign.ordre,
-        date_debut: new Date(),
-      },
-    });
-
-    console.log(
-      `[WORKFLOW] Workflow assigné à l'utilisateur ${utilisateur_id} : étape "${etapeToAssign.nom}" (ordre: ${etapeToAssign.ordre})`
-    );
-    return newWorkflow;
-  } catch (error) {
-    console.error(
-      `[WORKFLOW] Erreur lors de l'assignation du workflow:`,
-      error
-    );
-    throw error;
-  }
-}
-
-/**
- * Met à jour le workflow d'un utilisateur vers l'étape suivante
- * @param utilisateur_id - ID de l'utilisateur
- * @param projet_id - ID du projet
+ * @param utilisateur_id - ID de l'utilisateur qui effectue l'action
  * @returns Le nouveau workflow ou null si pas d'étape suivante
  */
 export async function progressToNextStage(
-  utilisateur_id: number,
-  projet_id: number
+  titre_foncier_id: number,
+  projet_id: number,
+  utilisateur_id: number
 ) {
   try {
-    // Récupérer le workflow actuel de l'utilisateur
+    // Récupérer le workflow actuel du titre foncier pour ce projet
     const currentWorkflow = await prisma.workflows.findFirst({
       where: {
-        utilisateur_id: utilisateur_id,
+        titre_foncier_id: titre_foncier_id,
         projet_id: projet_id,
         date_fin: null,
       },
@@ -224,7 +136,7 @@ export async function progressToNextStage(
 
     if (!currentWorkflow) {
       console.log(
-        `[WORKFLOW] Aucun workflow actif trouvé pour l'utilisateur ${utilisateur_id} sur le projet ${projet_id}`
+        `[WORKFLOW] Aucun workflow actif trouvé pour le titre foncier ${titre_foncier_id} sur le projet ${projet_id}`
       );
       return null;
     }
@@ -244,7 +156,7 @@ export async function progressToNextStage(
 
     if (!nextEtape) {
       console.log(
-        `[WORKFLOW] Aucune étape suivante trouvée pour l'utilisateur ${utilisateur_id}`
+        `[WORKFLOW] Aucune étape suivante trouvée pour le projet ${projet_id}`
       );
       return null;
     }
@@ -262,53 +174,22 @@ export async function progressToNextStage(
     // Créer le nouveau workflow pour l'étape suivante
     const newWorkflow = await prisma.workflows.create({
       data: {
-        utilisateur_id: utilisateur_id,
+        titre_foncier_id: titre_foncier_id,
         projet_id: projet_id,
         etape_nom: nextEtape.nom,
         ordre: nextEtape.ordre,
         date_debut: new Date(),
+        utilisateur_id: utilisateur_id, // On enregistre qui a fait l'action
       },
     });
 
     console.log(
-      `[WORKFLOW] Utilisateur ${utilisateur_id} passé à l'étape suivante : "${nextEtape.nom}" (ordre: ${nextEtape.ordre})`
+      `[WORKFLOW] Titre foncier ${titre_foncier_id} passé à l'étape suivante : "${nextEtape.nom}" (ordre: ${nextEtape.ordre}) par l'utilisateur ${utilisateur_id}`
     );
     return newWorkflow;
   } catch (error) {
     console.error(
       `[WORKFLOW] Erreur lors du passage à l'étape suivante:`,
-      error
-    );
-    throw error;
-  }
-}
-
-/**
- * Récupère le workflow actuel d'un utilisateur pour un projet donné
- * @param utilisateur_id - ID de l'utilisateur
- * @param projet_id - ID du projet
- * @returns Le workflow actuel ou null
- */
-export async function getCurrentUserWorkflow(
-  utilisateur_id: number,
-  projet_id: number
-) {
-  try {
-    const workflow = await prisma.workflows.findFirst({
-      where: {
-        utilisateur_id: utilisateur_id,
-        projet_id: projet_id,
-        date_fin: null,
-      },
-      orderBy: {
-        date_debut: "desc",
-      },
-    });
-
-    return workflow;
-  } catch (error) {
-    console.error(
-      `[WORKFLOW] Erreur lors de la récupération du workflow:`,
       error
     );
     throw error;
