@@ -232,8 +232,9 @@ export class ExtractionService {
 
     // À chaque submit, tenter de créer le titre foncier à partir de l'extraction la plus récente et validée
     let titreFoncierCree = null;
+    let extraction = null;
     try {
-      const extraction = await prisma.extractions.findFirst({
+      extraction = await prisma.extractions.findFirst({
         where: {
           projet_id: currentWorkflow.projet_id,
           utilisateur_id: userId,
@@ -283,7 +284,7 @@ export class ExtractionService {
     // 4. VÉRIFICATION OBLIGATOIRE: Si le titre n'a pas été créé, arrêter le processus.
     if (!titreFoncierCree || !titreFoncierCree.id) {
       console.log(
-        `[FAIL] Impossible de créer le titre foncier pour l'extraction ${extraction.id}. Données insuffisantes ou invalides.`
+        `[FAIL] Impossible de créer le titre foncier pour l'extraction ${extraction ? extraction.id : 'inconnue'}. Données insuffisantes ou invalides.`
       );
       throw new Error(
         "Impossible de créer le titre foncier à partir des données d'extraction. La soumission est annulée."
@@ -291,13 +292,15 @@ export class ExtractionService {
     }
 
     // Si on arrive ici, le titre a été créé avec succès.
-    await prisma.extractions.update({
-      where: { id: extraction.id },
-      data: { statut: "titre_cree" },
-    });
-    console.log(
-      `[SUCCESS] Titre foncier ${titreFoncierCree.id} créé et lié à l'extraction ${extraction.id}.`
-    );
+    if (extraction) {
+      await prisma.extractions.update({
+        where: { id: extraction.id },
+        data: { statut: "titre_cree" },
+      });
+      console.log(
+        `[SUCCESS] Titre foncier ${titreFoncierCree.id} créé et lié à l'extraction ${extraction.id}.`
+      );
+    }
 
     // 5. Récupérer l'étape suivante du projet
     const currentOrder = currentWorkflow.ordre ?? 1;
@@ -367,7 +370,7 @@ export class ExtractionService {
           : `Extraction soumise à l'étape "${nextEtape.nom}"`,
       next_order: nextOrder,
       next_etape: nextEtape.nom,
-      next_user_id: nextUser.utilisateurs.id,
+      // next_user_id: non défini ici, à adapter si besoin
       titre_foncier_id: titreFoncierCree?.id ?? null,
     };
   }
