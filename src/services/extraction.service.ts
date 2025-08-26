@@ -230,38 +230,49 @@ export class ExtractionService {
       etape_nom: currentWorkflow.etape_nom,
     });
 
-    // 2. Rechercher une extraction valide pour créer le titre foncier
-    const extraction = await prisma.extractions.findFirst({
-      where: {
-        projet_id: currentWorkflow.projet_id,
-        utilisateur_id: userId,
-        statut: { in: ["Extrait", "valide", "Corrigé"] },
-      },
-      orderBy: { date_extraction: "desc" },
-    });
-
-    if (!extraction || !extraction.projet_id) {
-      throw new Error(
-        `Aucune extraction valide trouvée pour le projet ${currentWorkflow.projet_id}. Impossible de créer le titre foncier et de continuer.`
-      );
-    }
-
-    // 3. Tenter de créer le titre foncier. C'est une étape obligatoire.
+    // À chaque submit, tenter de créer le titre foncier à partir de l'extraction la plus récente et validée
     let titreFoncierCree = null;
     try {
-      const extractionDto = {
-        id: extraction.id,
-        projet_id: extraction.projet_id,
-        donnees_extraites: extraction.donnees_extraites,
-      };
-      titreFoncierCree =
-        await titreFoncierExtractionService.createTitreFromExtraction(
-          extractionDto,
-          userId
+      const extraction = await prisma.extractions.findFirst({
+        where: {
+          projet_id: currentWorkflow.projet_id,
+          utilisateur_id: userId,
+          statut: { in: ["Extrait", "valide", "Corrigé"] },
+        },
+        orderBy: { date_extraction: "desc" },
+      });
+      if (extraction && extraction.projet_id) {
+        const extractionDto = {
+          id: extraction.id,
+          projet_id: extraction.projet_id,
+          donnees_extraites: extraction.donnees_extraites,
+        };
+        titreFoncierCree =
+          await titreFoncierExtractionService.createTitreFromExtraction(
+            extractionDto,
+            userId
+          );
+        if (titreFoncierCree && titreFoncierCree.id) {
+          await prisma.extractions.update({
+            where: { id: extraction.id },
+            data: { statut: "titre_cree" },
+          });
+          console.log(
+            `[SUCCESS] Titre foncier ${titreFoncierCree.id} créé lors du submit.`
+          );
+        } else {
+          console.log(
+            `[WARN] Impossible de créer le titre foncier - données insuffisantes`
+          );
+        }
+      } else {
+        console.log(
+          `[WARN] Aucune extraction trouvée pour le projet ${currentWorkflow.projet_id} et utilisateur ${userId}`
         );
+      }
     } catch (error) {
       console.error(
-        `[ERROR] Erreur critique lors de la création du titre foncier au submit:`,
+        `[ERROR] Erreur lors de la création du titre foncier au submit:`,
         error
       );
       throw new Error(
@@ -319,37 +330,113 @@ export class ExtractionService {
       `[WORKFLOW] Étape suivante trouvée: ${nextEtape.nom} (ordre: ${nextEtape.ordre})`
     );
 
-    // 6. Transaction pour terminer le workflow actuel et créer le suivant (non-assigné)
+    // Transaction pour terminer le workflow actuel et créer le suivant
+    // Si un titre foncier a été créé, lier son id au nouveau workflow
     await prisma.$transaction([
-      // Terminer le workflow actuel de l'utilisateur
+      // Terminer le workflow actuel
       prisma.workflows.update({
         where: { id: currentWorkflow.id },
         data: {
           date_fin: new Date(),
         },
       }),
-      // Créer le nouveau workflow pour le titre, SANS utilisateur assigné
+      // Créer le nouveau workflow pour l'étape suivante
       prisma.workflows.create({
         data: {
           projet_id: currentWorkflow.projet_id,
           ordre: nextOrder,
-          utilisateur_id: null, // Le workflow n'est plus assigné à l'utilisateur
+          utilisateur_id: userId,
           etape_nom: nextEtape.nom,
           date_debut: new Date(),
-          titre_foncier_id: extraction.id, // Le champ est mal nommé, il référence l'extraction
+          titre_foncier_id:
+            titreFoncierCree && titreFoncierCree.id
+              ? titreFoncierCree.id
+              : undefined,
         },
       }),
     ]);
 
     console.log(
-      `[WORKFLOW] Transition réussie. Le titre foncier ${titreFoncierCree.id} est maintenant à l'étape "${nextEtape.nom}".`
+      `[WORKFLOW] Transition réussie vers l'étape "${nextEtape.nom}"`
     );
-
     return {
       success: true,
-      message: `Titre Foncier ${titreFoncierCree.id} créé et soumis avec succès à l'étape "${nextEtape.nom}".`,
+      message:
+        nextOrder === 2
+          ? "Extraction soumise au niveau 2 avec création automatique du titre foncier"
+          : `Extraction soumise à l'étape "${nextEtape.nom}"`,
       next_order: nextOrder,
       next_etape: nextEtape.nom,
+      next_user_id: nextUser.utilisateurs.id,
+      titre_foncier_id: titreFoncierCree?.id ?? null,
     };
+  }
+
+  /**
+   * Crée un titre foncier à partir de l'extraction la plus récente et validée pour un workflow donné,
+   * sans modifier l'étape du workflow.
+   * Retourne l'objet titre foncier créé ou null.
+   */
+  async createTitreFoncierForWorkflow(workflowId: number, userId: number) {
+    // Récupérer le workflow actuel
+    const currentWorkflow = await prisma.workflows.findFirst({
+      where: {
+        id: workflowId,
+        utilisateur_id: userId,
+        date_fin: null,
+      },
+    });
+    if (!currentWorkflow) {
+      throw new Error("Aucun workflow actif trouvé");
+    }
+
+    // Récupérer l'extraction la plus récente et validée
+    const extraction = await prisma.extractions.findFirst({
+      where: {
+        projet_id: currentWorkflow.projet_id,
+        utilisateur_id: userId,
+        statut: { in: ["Extrait", "valide", "Corrigé"] },
+      },
+      orderBy: { date_extraction: "desc" },
+    });
+    if (!extraction || !extraction.projet_id) {
+      console.log(
+        `[WARN] Aucune extraction valide trouvée pour le workflow ${workflowId}`
+      );
+      return null;
+    }
+
+    // Création du titre foncier avec le champ statut
+    const extractionDto = {
+      id: extraction.id,
+      projet_id: extraction.projet_id,
+      donnees_extraites: extraction.donnees_extraites,
+      statut: "cree", // statut initial
+    };
+    const titreFoncierCree =
+      await titreFoncierExtractionService.createTitreFromExtraction(
+        extractionDto,
+        userId
+      );
+    if (titreFoncierCree && titreFoncierCree.id) {
+      await prisma.extractions.update({
+        where: { id: extraction.id },
+        data: { statut: "titre_cree" },
+      });
+      // Optionnel : lier le titre foncier au workflow
+      await prisma.workflows.update({
+        where: { id: currentWorkflow.id },
+        data: { titre_foncier_id: titreFoncierCree.id },
+      });
+      console.log(
+        `[SUCCESS] Titre foncier ${titreFoncierCree.id} créé et lié au workflow ${workflowId}`
+      );
+      return titreFoncierCree;
+    } else {
+      console.log(
+        `[WARN] Impossible de créer le titre foncier - données insuffisantes pour le workflow ${workflowId}`
+      );
+      return null;
+    }
   }
 }

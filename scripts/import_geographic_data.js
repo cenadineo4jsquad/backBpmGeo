@@ -11,7 +11,10 @@ async function importGeographicData() {
 
   try {
     // Lire les fichiers GeoJSON
-    const arrondissementsPath = path.join(__dirname, "Arrondissements.geojson");
+    const arrondissementsPath = path.join(
+      __dirname,
+      "../Arrondissements.geojson"
+    );
     const departementsPath = path.join(__dirname, "Departements.geojson");
 
     if (!fs.existsSync(arrondissementsPath)) {

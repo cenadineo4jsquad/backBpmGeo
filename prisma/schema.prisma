@@ -115,6 +115,7 @@ model titres_fonciers {
   localite           String?
   titres_extractions titres_extractions[]
   projets            projets?             @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  statut             String?              @db.VarChar(50) // Ajout du statut
   workflows          workflows[]
 
   @@index([projet_id], map: "idx_titres_projet")
