@@ -10,8 +10,7 @@
     "test": "jest",
     "test:titres": "jest tests/titresFoncier.api.test.js",
     "create-admin": "ts-node scripts/createAdmin.ts",
-    "import-arrondissements": "node scripts/import_arrondissements.js",
-    "import-departements": "node scripts/import_departements.js"
+    "quick-import": "node scripts/quick_import_localites.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",

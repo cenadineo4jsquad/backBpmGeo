@@ -48,11 +48,14 @@ model extractions {
 }
 
 model localites {
-  id           Int            @id @default(autoincrement())
-  type         String         @db.VarChar(50)
-  valeur       String         @db.VarChar(255)
-  projets      projets[]
-  utilisateurs utilisateurs[]
+  id                Int      @id @default(autoincrement())
+  type              String   @db.VarChar(50)
+  valeur            String   @db.VarChar(255)
+  projets           projets[]
+  utilisateurs      utilisateurs[]
+  region_id         Int?
+  departement_id    Int?
+  arrondissement_id Int?
 
   @@unique([type, valeur])
 }
@@ -87,7 +90,7 @@ model roles {
   nom                 String              @unique @db.VarChar(50)
   niveau_hierarchique Int?
   description         String?
-  permissions         permissions[] // <--- Relation 1-N
+  permissions         permissions[]
   utilisateur_roles   utilisateur_roles[]
   projets             projets?            @relation(fields: [projet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
@@ -173,4 +176,29 @@ model workflows {
   titres_fonciers  titres_fonciers? @relation(fields: [titre_foncier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   utilisateurs     utilisateurs?    @relation(fields: [utilisateur_id], references: [id], onUpdate: NoAction)
   
+}
+
+model regions {
+  id           Int            @id @default(autoincrement())
+  nom          String         @unique
+  departements departements[]
+}
+
+model departements {
+  id         Int             @id @default(autoincrement())
+  nom        String
+  region_id  Int
+  region     regions         @relation(fields: [region_id], references: [id])
+  arrondissements arrondissements[]
+
+  @@unique([nom, region_id])
+}
+
+model arrondissements {
+  id            Int          @id @default(autoincrement())
+  nom           String
+  departement_id Int
+  departement   departements @relation(fields: [departement_id], references: [id])
+
+  @@unique([nom, departement_id])
 }

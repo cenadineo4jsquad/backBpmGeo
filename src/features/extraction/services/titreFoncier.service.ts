@@ -48,20 +48,41 @@ export const titreFoncierExtractionService = {
 
   async createTitreFromExtraction(extraction: any, userId: number) {
     console.log(
-      `Creating titre foncier from extraction ${extraction.id} for user ${userId}`
+      `Création du titre foncier à partir de l'extraction ${extraction.id} pour l'utilisateur ${userId}`
     );
 
-    // Mock implementation - replace with actual creation logic
-    return {
-      id: Math.floor(Math.random() * 1000),
-      numero: "TF-2024-001",
-      surface: 1250.5,
-      proprietaire: "John Doe",
-      localite: "Paris",
-      dateCreation: new Date(),
-      extractionId: extraction.id,
-      createdBy: userId,
-    };
+    const donnees = extraction.donnees_extraites;
+
+    if (!donnees || !donnees.owner_name || !donnees.area_value) {
+      console.log(
+        `[WARN] Données d'extraction insuffisantes pour créer un titre foncier pour l'extraction ${extraction.id}.`
+      );
+      return null;
+    }
+
+    try {
+      const nouveauTitre = await prisma.titres_fonciers.create({
+        data: {
+          projet_id: extraction.projet_id,
+          proprietaire: donnees.owner_name,
+          superficie: donnees.area_value,
+          perimetre: donnees.polygon?.perimeter,
+          coordonnees_gps: donnees.Coordonnees,
+          centroide: donnees.polygon?.centroid,
+          localite: donnees.arrondissement_name,
+          statut: 'En cours de traitement', // Statut initial
+        },
+      });
+
+      console.log(
+        `[SUCCESS] Titre foncier ${nouveauTitre.id} créé avec succès.`
+      );
+      return nouveauTitre;
+
+    } catch (error) {
+      console.error(`[ERROR] Erreur lors de la création du titre foncier dans la base de données:`, error);
+      throw new Error("La création du titre foncier en base de données a échoué.");
+    }
   },
 };
 

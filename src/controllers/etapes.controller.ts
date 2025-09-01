@@ -79,18 +79,7 @@ export const createEtape = async (
       },
     });
 
-    // Créer ou mettre à jour le workflow complet pour le projet
-    try {
-      await initializeProjectWorkflow(Number(projet_id));
-      console.log(
-        `[CREATE_ETAPE] Workflow initialisé pour le projet ${projet_id}`
-      );
-    } catch (workflowError) {
-      console.warn(
-        `[CREATE_ETAPE] Erreur lors de l'initialisation du workflow:`,
-        workflowError
-      );
-    }
+    
 
     reply.status(201).send(newEtape);
   } catch (error) {

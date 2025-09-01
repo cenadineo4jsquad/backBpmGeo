@@ -1,3 +1,8 @@
+import { FastifyRequest, FastifyReply } from "fastify";
+import { TitreFoncierService } from "../services/titreFoncier.service";
+
+const titreFoncierService = new TitreFoncierService();
+
 export const createTitreFoncier = async (
   request: FastifyRequest,
   reply: FastifyReply
@@ -122,30 +127,30 @@ export const getTitresGeojson = async (
   }
 };
 
-import { FastifyRequest, FastifyReply } from "fastify";
-import { TitreFoncierService } from "../services/titreFoncier.service";
-
-const titreFoncierService = new TitreFoncierService();
-
 export const getTitresFoncier = async (
   request: FastifyRequest,
   reply: FastifyReply
 ) => {
   try {
     const user = request.user as any;
-    let titres;
+    const { page = 1, pageSize = 10 } = request.query as any;
+    let result;
 
     // Utiliser les informations d'accès géographique du middleware d'authentification
     if (user.geographic_access.can_access_all) {
       // Niveau central - accès à tous les titres
-      titres = await titreFoncierService.findAllTitresFoncier();
+      result = await titreFoncierService.findAllTitresFoncier(page, pageSize);
     } else {
       // Autres niveaux - accès selon hiérarchie géographique
-      titres = await titreFoncierService.getTitresFoncier(
+      result = await titreFoncierService.getTitresFoncier(
         user.localites,
-        user.niveau_hierarchique
+        user.niveau_hierarchique,
+        page,
+        pageSize
       );
     }
+
+    const { titres, total } = result;
 
     // Format strict selon la doc
     const titresFormates = (titres || []).map((t: any) => ({
@@ -161,6 +166,12 @@ export const getTitresFoncier = async (
     // Ajouter des informations de contexte d'accès dans la réponse
     const response = {
       titres: titresFormates,
+      pagination: {
+        page: Number(page),
+        pageSize: Number(pageSize),
+        total,
+        totalPages: Math.ceil(total / pageSize)
+      },
       access_info: {
         niveau_utilisateur: user.niveau_hierarchique,
         localite_principale: user.geographic_access.primary_localite,
@@ -172,6 +183,7 @@ export const getTitresFoncier = async (
 
     reply.status(200).send(response);
   } catch (error) {
+    console.error("Erreur détaillée:", error);
     reply
       .status(500)
       .send({ error: "Erreur lors de la récupération des titres fonciers" });
@@ -230,32 +242,20 @@ export const getTitreFoncierById = async (
     if (!titre) {
       return reply.status(404).send({ error: "Titre foncier non trouvé" });
     }
-    // Filtrage localité pour niveaux 1–2 (robuste)
-    if (user.niveau_hierarchique === 1 || user.niveau_hierarchique === 2) {
-      let titreLocalite = titre.localite;
-      let userLocalite = user.localite || user.localites;
 
-      // Si localite est un string JSON, parser
-      if (typeof titreLocalite === "string") {
-        try {
-          titreLocalite = JSON.parse(titreLocalite);
-        } catch {}
-      }
-      if (typeof userLocalite === "string") {
-        try {
-          userLocalite = JSON.parse(userLocalite);
-        } catch {}
-      }
+    // Contrôle d'accès hiérarchique
+    if (user.niveau_hierarchique < 3) { // Niveaux 1, 2
+      const hasAccess = await titreFoncierService.hasAccessToLocalite(
+        user.niveau_hierarchique,
+        user.localite,
+        titre.localite
+      );
 
-      if (
-        !titreLocalite ||
-        !userLocalite ||
-        titreLocalite.valeur !== userLocalite.valeur ||
-        titreLocalite.type !== userLocalite.type
-      ) {
-        return reply.status(403).send({ error: "Accès interdit" });
+      if (!hasAccess) {
+        return reply.status(403).send({ error: "Accès interdit à cette localité" });
       }
     }
+
     // Format strict selon la doc
     const titreFormate = {
       id: titre.id,

@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { Pool } from "pg";
 import bcrypt from "bcrypt";
 
@@ -25,11 +28,40 @@ async function createAdmin() {
     email,
     hash,
     4, // Niveau hiérarchique 4 pour l'administration centrale
-    1, // Localité par défaut (à adapter si nécessaire)
+    858, // Localité par défaut (à adapter si nécessaire)
   ];
 
   try {
-    // 1. Création de l'utilisateur admin (s'il n'existe pas)
+    // 1. Création d'une localité par défaut si elle n'existe pas
+    const queryCreateLocalite = `
+      INSERT INTO localites (type, valeur)
+      VALUES ('administration_centrale', 'MINCAF')
+      ON CONFLICT (type, valeur) DO NOTHING
+      RETURNING id
+    `;
+    const { rows: localiteRows } = await pool.query(queryCreateLocalite);
+    let localiteId = 1; // Valeur par défaut
+    
+    if (localiteRows.length > 0) {
+      localiteId = localiteRows[0].id;
+      console.log("Localité créée avec ID:", localiteId);
+    } else {
+      // Si la localité existe déjà, on récupère son ID
+      const queryGetLocalite = `SELECT id FROM localites WHERE type = 'administration_centrale' AND valeur = 'MINCAF' LIMIT 1`;
+      const { rows: existingLocaliteRows } = await pool.query(queryGetLocalite);
+      if (existingLocaliteRows.length > 0) {
+        localiteId = existingLocaliteRows[0].id;
+        console.log("Localité existante trouvée avec ID:", localiteId);
+      } else {
+        throw new Error("Impossible de créer ou trouver la localité");
+      }
+    }
+    
+    // Mettre à jour la valeur avec l'ID de localité correct
+    values[5] = localiteId;
+    console.log("Utilisation de localite_id:", localiteId);
+
+    // 2. Création de l'utilisateur admin (s'il n'existe pas)
     const queryInsertUser = `
       INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, niveau_hierarchique, localite_id)
       VALUES ($1, $2, $3, $4, $5, $6)

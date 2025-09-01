@@ -15,7 +15,7 @@ async function importGeographicData() {
       __dirname,
       "../Arrondissements.geojson"
     );
-    const departementsPath = path.join(__dirname, "Departements.geojson");
+    const departementsPath = path.join(__dirname, "../Departements.geojson");
 
     if (!fs.existsSync(arrondissementsPath)) {
       throw new Error("Fichier Arrondissements.geojson non trouvé");

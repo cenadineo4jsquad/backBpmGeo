@@ -62,10 +62,15 @@ export const submitToNextStageHandler = async (
       return reply.status(404).send({ error: "Workflow non trouvé" });
     }
 
-    if (!currentWorkflow.titre_foncier_id || !currentWorkflow.projet_id) {
+    if (!currentWorkflow.titre_foncier_id) {
       return reply
         .status(400)
-        .send({ error: "Le workflow n'est pas lié à un titre foncier ou à un projet" });
+        .send({ error: "Le workflow n'est pas lié à un titre foncier." });
+    }
+    if (!currentWorkflow.projet_id) {
+      return reply
+        .status(400)
+        .send({ error: "Le workflow n'est pas lié à un projet." });
     }
 
     const result = await submitToNextStage(

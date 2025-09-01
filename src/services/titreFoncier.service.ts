@@ -12,9 +12,14 @@ export class TitreFoncierService {
   constructor() {
     this.geographicAccess = new GeographicAccessService(pool);
   }
-  async findAllTitresFoncier() {
-    const result = await pool.query("SELECT * FROM titres_fonciers");
-    return result.rows;
+  async findAllTitresFoncier(page: number = 1, pageSize: number = 10) {
+    const offset = (page - 1) * pageSize;
+    const result = await pool.query("SELECT * FROM titres_fonciers LIMIT $1 OFFSET $2", [pageSize, offset]);
+    const totalResult = await pool.query("SELECT COUNT(*) FROM titres_fonciers");
+    return {
+      titres: result.rows,
+      total: parseInt(totalResult.rows[0].count, 10)
+    };
   }
   async createTitreFoncier(data: any, utilisateurId: number) {
     const query = `
@@ -107,16 +112,24 @@ export class TitreFoncierService {
       features,
     };
   }
-  async getTitresFoncier(localite: any, niveau_hierarchique: number) {
+  async getTitresFoncier(localite: any, niveau_hierarchique: number, page: number = 1, pageSize: number = 10) {
+    const offset = (page - 1) * pageSize;
     const { whereClause, params } =
       this.geographicAccess.buildHierarchicalWhereClause(
         niveau_hierarchique,
         localite
       );
 
-    const query = `SELECT * FROM titres_fonciers ${whereClause}`;
-    const result = await pool.query(query, params);
-    return result.rows;
+    const query = `SELECT * FROM titres_fonciers ${whereClause} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    const result = await pool.query(query, [...params, pageSize, offset]);
+
+    const countQuery = `SELECT COUNT(*) FROM titres_fonciers ${whereClause}`;
+    const totalResult = await pool.query(countQuery, params);
+
+    return {
+      titres: result.rows,
+      total: parseInt(totalResult.rows[0].count, 10)
+    };
   }
 
   async getTitreFoncierById(id: number) {

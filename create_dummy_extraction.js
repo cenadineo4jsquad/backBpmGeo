@@ -2,8 +2,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function createDummyExtraction() {
-    const userId = 10; // From user's provided data
-    const projectId = 12; // From user's provided data
+    const userId = 2; // From user's provided data
+    const projectId = 11; // From user's provided data
     const filename = "20250723_200750_pdfscanner.jpg";
 
     const flaskResults = {

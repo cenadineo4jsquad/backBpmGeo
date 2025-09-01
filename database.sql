@@ -2,7 +2,7 @@
 -- À adapter selon vos besoins spécifiques
 
 -- Création de la base
-CREATE DATABASE geobpm;
+DELETE DATABASE geobpm;
 
 -- Connexion à la base
 \c geobpm;
