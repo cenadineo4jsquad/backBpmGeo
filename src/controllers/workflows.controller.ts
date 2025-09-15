@@ -36,9 +36,14 @@ export const createWorkflowHandler = async (
 ) => {
   try {
     const { projet_id, titre_foncier_id } = request.body as any;
+    const user = request.user as any; // Get the user from the request
+    if (!user || !user.id) { // Add a check for the user
+        return reply.status(401).send({ error: "Utilisateur non authentifié" });
+    }
     const workflow = await createWorkflow(
       projet_id,
-      titre_foncier_id
+      titre_foncier_id,
+      user.id // Pass the user's ID
     );
     reply.status(201).send(workflow);
   } catch (error) {

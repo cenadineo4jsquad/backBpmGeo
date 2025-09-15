@@ -2,9 +2,9 @@ const axios = require('axios');
 const FormData = require('form-data');
 
 const API_URL = 'http://localhost:3000/api';
-const ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTAsImVtYWlsIjoic3RlZXZlQGdtYWlsLmNvbSIsInJvbGUiOiJFeHRyYWN0ZXVyX3Rlc3QiLCJuaXZlYXVfaGllcmFyY2hpcXVlIjoxLCJpYXQiOjE3NTU5MDI4ODMsImV4cCI6MTc1NTkwNjQ4M30.EUsRQU3WQpKpW50LvBvTvkQpE3r8mUrC4uN78nSvyWA';
-const PROJET_ID = 12;
-const LOCALITE = {"id":57,"type":"arrondissement","valeur":"Soa"};
+const ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODAsImVtYWlsIjoidXNlcjJAZXhhbXBsZS5jb20iLCJyb2xlIjoidmFsaWQiLCJuaXZlYXVfaGllcmFyY2hpcXVlIjoxLCJpYXQiOjE3NTc5NDk5NzgsImV4cCI6MTc1Nzk1MzU3OH0.bPEmwnqslOeCF8ueDUFGsS3R6NW4L0n9nXdEAa5L2us';
+const PROJET_ID = 38;
+const LOCALITE = {"id":926,"type":"arrondissement","valeur":"Soa"};
 
 async function createExtraction() {
     const form = new FormData();

@@ -80,7 +80,8 @@ export class ExtractionService {
           // Créer le workflow initial pour ce titre foncier
           await createWorkflow(
             extraction.projet_id,
-            titreFoncierCree.id
+            titreFoncierCree.id,
+            data.utilisateur_id
           );
           console.log(
             `[SUCCESS] Workflow initial créé pour le titre foncier ${titreFoncierCree.id}.`

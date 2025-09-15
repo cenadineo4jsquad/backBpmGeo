@@ -56,7 +56,8 @@ export async function getWorkflows({
 
 export async function createWorkflow(
   projet_id: number,
-  titre_foncier_id: number
+  titre_foncier_id: number,
+  utilisateur_id: number
 ) {
   try {
     // Vérifier si un workflow existe déjà pour ce titre sur ce projet
@@ -85,6 +86,7 @@ export async function createWorkflow(
       data: {
         projet_id: projet_id,
         titre_foncier_id: titre_foncier_id,
+        utilisateur_id: utilisateur_id,
         etape_nom: "Étape initiale",
         ordre: 1,
         date_debut: new Date(),

@@ -60,6 +60,12 @@ export class WorkflowInitializationService {
     etapes: any[]
   ) {
     try {
+      // This function has been intentionally disabled to prevent the creation
+      // of placeholder workflows that are not linked to a titre_foncier.
+      // The valid workflow creation process is handled by the ExtractionService.
+      console.log(`[WORKFLOW_INIT] SKIPPED: Placeholder workflow creation for user ${utilisateurId} on project ${projetId} is disabled.`);
+
+      /*
       // Check if user already has workflows for this project
       const existingWorkflows = await prisma.workflows.findMany({
         where: {
@@ -90,6 +96,7 @@ export class WorkflowInitializationService {
           },
         });
       }
+      */
     } catch (error) {
       console.error("[WORKFLOW_USER] Erreur:", error);
       throw error;
