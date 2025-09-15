@@ -70,6 +70,7 @@ export async function authenticate(
       email: utilisateur.email,
       niveau_hierarchique: utilisateur.niveau_hierarchique,
       localites: utilisateur.localites,
+      localite: utilisateur.localites, // injection explicite pour compatibilité accès
       utilisateur_roles: utilisateur.utilisateur_roles || [],
       etape_courante: etape_courante_ordre,
       geographic_access: {

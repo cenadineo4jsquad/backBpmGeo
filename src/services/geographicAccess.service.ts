@@ -32,12 +32,17 @@ export class GeographicAccessService {
 
       case 2: // Département - accès à tous les arrondissements de son département
         return {
-          whereClause: `WHERE localite IN (
-            SELECT a.nom 
-            FROM arrondissements a
-            JOIN departements d ON a.departement_id = d.id
-            WHERE d.nom = $1
-          ) OR localite = $1 OR localite = $2 OR (localite::text LIKE '%"valeur":"' || $1 || '"%')`,
+          whereClause: `WHERE (
+            localite IN (
+              SELECT a.nom 
+              FROM arrondissements a
+              JOIN departements d ON a.departement_id = d.id
+              WHERE d.nom = $1
+            )
+            OR localite = $1
+            OR localite = $2
+            OR (localite::text LIKE '%"valeur":"' || $1 || '"%')
+          )`,
           params: [
             localiteValue,
             JSON.stringify({ type: "departement", valeur: localiteValue }),
@@ -89,7 +94,12 @@ export class GeographicAccessService {
 
     switch (userNiveau) {
       case 1: // Arrondissement
-        return userLocaliteValue === targetLocalite;
+        if (userLocaliteValue === targetLocalite) {
+          return true;
+        } else {
+          console.warn(`[ACCESS][ARR] Refusé: userLocalite='${userLocaliteValue}' targetLocalite='${targetLocalite}'`);
+          return false;
+        }
 
       case 2: // Département
         // Vérifier si la localité cible est un arrondissement du département de l'utilisateur
@@ -103,7 +113,18 @@ export class GeographicAccessService {
         `,
           [userLocaliteValue, targetLocalite]
         );
-        return departmentCheck.rows.length > 0;
+        if (departmentCheck.rows.length > 0) {
+          return true;
+        } else {
+          // Log détaillé
+          const arrs = await this.pool.query(
+            `SELECT a.nom FROM arrondissements a JOIN departements d ON a.departement_id = d.id WHERE d.nom = $1`,
+            [userLocaliteValue]
+          );
+          const arrList = arrs.rows.map(r => r.nom).join(", ");
+          console.warn(`[ACCESS][DEP] Refusé: userDepartement='${userLocaliteValue}' targetLocalite='${targetLocalite}' | Arrondissements du département: [${arrList}]`);
+          return false;
+        }
 
       case 3: // Région
         // Vérifier si la localité cible appartient à la région de l'utilisateur
