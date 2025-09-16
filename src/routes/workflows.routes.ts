@@ -11,6 +11,12 @@ import { restrictToAdmin } from "../middlewares/restrictToAdmin";
 import { restrictToFirstUser } from "../middlewares/restrictToFirstUser";
 
 export default async function workflowsRoutes(fastify: FastifyInstance) {
+  // Valide ou rejette un workflow (avancer ou reculer l'étape)
+  fastify.put(
+    "/api/workflows/:id/valider",
+    { preHandler: [authenticate] },
+    require("../controllers/workflows.controller").validerWorkflowHandler
+  );
   // Liste tous les workflows accessibles à l'utilisateur authentifié
   fastify.get(
     "/api/workflows",
@@ -35,10 +41,5 @@ export default async function workflowsRoutes(fastify: FastifyInstance) {
     { preHandler: [authenticate] },
     submitToNextStageHandler
   );
-  // Valide ou rejette une tâche d'un workflow (utilisateur courant)
-  fastify.put(
-    "/api/taches/:id/valider",
-    { preHandler: [authenticate] },
-    validateTaskHandler
-  );
+  // (Supprimé) Valide ou rejette une tâche d'un workflow (remplacé par /api/workflows/:id/valider)
 }

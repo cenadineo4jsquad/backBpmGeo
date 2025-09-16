@@ -1,3 +1,89 @@
+// Validation ou rejet d'un workflow (avancer ou reculer l'étape)
+export const validerWorkflowHandler = async (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
+  const { id } = request.params as any;
+  const { statut, commentaire } = request.body as any;
+  const user = request.user as any;
+
+  if (!statut || (statut === "rejeté" && !commentaire)) {
+    return reply.status(400).send({ error: "Un commentaire est requis pour le rejet" });
+  }
+
+  try {
+    // Récupérer le workflow courant
+    const workflow = await prisma.workflows.findUnique({ where: { id: Number(id) } });
+    if (!workflow) {
+      return reply.status(404).send({ error: "Workflow non trouvé" });
+    }
+    const { titre_foncier_id, projet_id, ordre } = workflow;
+    if (!titre_foncier_id || !projet_id || !ordre) {
+      return reply.status(400).send({ error: "Données du workflow incomplètes" });
+    }
+
+    if (statut === "approuvé") {
+      // Chercher l'étape suivante
+      const nextEtape = await prisma.etapes_workflow.findFirst({
+        where: { projet_id, ordre: { gt: ordre } },
+        orderBy: { ordre: "asc" },
+      });
+      if (!nextEtape) {
+        return reply.status(400).send({ error: "Déjà à la dernière étape du workflow" });
+      }
+      // Terminer le workflow courant
+      await prisma.workflows.update({ where: { id: workflow.id }, data: { date_fin: new Date() } });
+      // Créer le nouveau workflow pour l'étape suivante
+      const newWorkflow = await prisma.workflows.create({
+        data: {
+          titre_foncier_id,
+          projet_id,
+          etape_nom: nextEtape.nom,
+          ordre: nextEtape.ordre,
+          date_debut: new Date(),
+          utilisateur_id: user.id,
+        },
+      });
+      return reply.status(200).send(newWorkflow);
+    } else if (statut === "rejeté") {
+      // Chercher l'étape précédente
+      const prevEtape = await prisma.etapes_workflow.findFirst({
+        where: { projet_id, ordre: { lt: ordre } },
+        orderBy: { ordre: "desc" },
+      });
+      if (!prevEtape) {
+        return reply.status(400).send({ error: "Déjà à la première étape du workflow" });
+      }
+      // Terminer le workflow courant
+      await prisma.workflows.update({ where: { id: workflow.id }, data: { date_fin: new Date() } });
+      // Créer le nouveau workflow pour l'étape précédente
+      const newWorkflow = await prisma.workflows.create({
+        data: {
+          titre_foncier_id,
+          projet_id,
+          etape_nom: prevEtape.nom,
+          ordre: prevEtape.ordre,
+          date_debut: new Date(),
+          utilisateur_id: user.id,
+        },
+      });
+      // Historiser le commentaire de rejet (dans la table validations si besoin)
+      await prisma.validations.create({
+        data: {
+          utilisateur_id: user.id,
+          statut: "rejeté",
+          commentaire,
+          date_validation: new Date(),
+        },
+      });
+      return reply.status(200).send(newWorkflow);
+    } else {
+      return reply.status(400).send({ error: "Statut invalide" });
+    }
+  } catch (error) {
+    reply.status(500).send({ error: "Erreur lors de la validation/rejet du workflow" });
+  }
+};
 import { FastifyRequest, FastifyReply } from "fastify";
 import { getWorkflows, createWorkflow, submitToNextStage, validateTask } from "../services/workflow.service";
 import { PrismaClient } from "@prisma/client";

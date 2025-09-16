@@ -256,7 +256,21 @@ export const getTitreFoncierById = async (
       }
     }
 
-    // Format strict selon la doc
+    // Chercher le workflow actif lié à ce titre foncier
+    let workflow_id = null;
+    try {
+      const { rows } = await require("../config/pool").default.query(
+        "SELECT id FROM workflows WHERE titre_foncier_id = $1 AND date_fin IS NULL ORDER BY id DESC LIMIT 1",
+        [titre.id]
+      );
+      if (rows && rows.length > 0) {
+        workflow_id = rows[0].id;
+      }
+    } catch (e) {
+      // log optionnel
+    }
+
+    // Format strict selon la doc + workflow_id
     const titreFormate = {
       id: titre.id,
       projet_id: titre.projet_id,
@@ -267,6 +281,7 @@ export const getTitreFoncierById = async (
         titre.perimetre !== undefined ? Number(titre.perimetre) : null,
       coordonnees_gps: titre.coordonnees_gps,
       localite: titre.localite,
+      workflow_id,
     };
     reply.status(200).send(titreFormate);
   } catch (error) {

@@ -18,6 +18,15 @@ export class GeographicAccessService {
     niveau_hierarchique: number,
     localite: any
   ): { whereClause: string; params: any[] } {
+    // Cas spécial MINCAF (administration centrale)
+    if (localite && localite.type === 'administration_centrale' && localite.valeur === 'MINCAF') {
+      // Accès à tous les titres dont la localité est de type département, arrondissement ou administration_centrale
+      return {
+        whereClause: `WHERE (localite::jsonb->>'type') IN ('departement', 'arrondissement', 'administration_centrale')`,
+        params: [],
+      };
+    }
+
     const localiteValue = localite?.valeur || localite;
 
     switch (niveau_hierarchique) {
