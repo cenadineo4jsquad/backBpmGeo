@@ -3,7 +3,13 @@ import jwt from "jsonwebtoken";
 import { authenticate } from "../middlewares/authenticate";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
-const REFRESH_SECRET = process.env.REFRESH_SECRET || "refresh_secret";
+// Doit correspondre au secret utilisé pour signer le refresh_token au login
+// (utilisateurs.controller.ts -> JWT_REFRESH_SECRET). REFRESH_SECRET reste
+// supporté en repli pour compatibilité avec les anciens déploiements.
+const REFRESH_SECRET =
+  process.env.JWT_REFRESH_SECRET ||
+  process.env.REFRESH_SECRET ||
+  "refresh_secret";
 const REFRESH_EXPIRES_IN = "7d"; // 7 jours
 
 // Store refresh tokens (à remplacer par Redis ou DB en prod)

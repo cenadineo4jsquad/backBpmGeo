@@ -1,19 +1,16 @@
 import jwt from 'jsonwebtoken';
-import { promisify } from 'util';
-import { config } from '../config';
+import config from '../config';
 
-const signAsync = promisify(jwt.sign);
-const verifyAsync = promisify(jwt.verify);
-
-export const generateToken = async (payload: object): Promise<string> => {
-  return await signAsync(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
-  });
+export const generateToken = (payload: object): string => {
+  const options: jwt.SignOptions = {
+    expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'],
+  };
+  return jwt.sign(payload, config.jwt.secret, options);
 };
 
-export const verifyToken = async (token: string): Promise<object | null> => {
+export const verifyToken = (token: string): object | null => {
   try {
-    return await verifyAsync(token, config.jwt.secret);
+    return jwt.verify(token, config.jwt.secret) as object;
   } catch (error) {
     return null;
   }
