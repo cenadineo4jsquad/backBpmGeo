@@ -20,6 +20,12 @@ export class ProjetGeographicService {
       return await prisma.projets.findMany({
         include: {
           localites: true,
+          _count: {
+            select: {
+              titres_fonciers: true,
+              extractions: true,
+            },
+          },
         },
         orderBy: { date_creation: "desc" },
       });

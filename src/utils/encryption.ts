@@ -14,9 +14,9 @@ export const encrypt = (text: string, key: string): string => {
 export const decrypt = (encryptedText: string, key: string): string => {
     const parts = encryptedText.split(':');
     const iv = Buffer.from(parts.shift()!, 'hex');
-    const encryptedTextBuffer = Buffer.from(parts.join(':'), 'hex');
+    const encryptedHex = parts.join(':');
     const decipher = createDecipheriv(ALGORITHM, Buffer.from(key, 'hex'), iv);
-    let decrypted = decipher.update(encryptedTextBuffer, 'hex', 'utf8');
+    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
 };
